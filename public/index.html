@@ -1,0 +1,1959 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>AquaTrace — North Bangalore Groundwater Intelligence</title>
+
+<!-- Leaflet Maps -->
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+<!-- Chart.js -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+
+<!-- Google Fonts -->
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@400;600;700;800&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet" />
+
+<style>
+  :root {
+    --bg: #060c14;
+    --bg2: #0a1628;
+    --bg3: #0f1f36;
+    --surface: #112240;
+    --surface2: #172d4d;
+    --border: #1e3a5f;
+    --border2: #2a4f7a;
+
+    --teal: #00d4aa;
+    --teal-dim: #00a07e;
+    --teal-glow: rgba(0,212,170,0.15);
+    --amber: #f5a623;
+    --amber-dim: #c07c10;
+    --red: #ff4e4e;
+    --red-dim: #c03030;
+    --blue: #4a9eff;
+    --green: #39d98a;
+    --purple: #a855f7;
+
+    --text: #e2eaf4;
+    --text2: #8fa8c4;
+    --text3: #4e6d8e;
+
+    --font-display: 'Syne', sans-serif;
+    --font-mono: 'Space Mono', monospace;
+    --font-body: 'Inter', sans-serif;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font-body);
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* ─── Noise overlay ─── */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.04'/%3E%3C/svg%3E");
+    pointer-events: none;
+    z-index: 9999;
+    opacity: 0.4;
+  }
+
+  /* ─── HEADER ─── */
+  header {
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    background: rgba(6, 12, 20, 0.92);
+    backdrop-filter: blur(16px);
+    border-bottom: 1px solid var(--border);
+    padding: 0 2rem;
+    height: 64px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .logo {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .logo-icon {
+    width: 36px;
+    height: 36px;
+    background: linear-gradient(135deg, var(--teal), var(--blue));
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 18px;
+  }
+
+  .logo-text {
+    font-family: var(--font-display);
+    font-weight: 800;
+    font-size: 1.3rem;
+    letter-spacing: -0.02em;
+    color: var(--text);
+  }
+
+  .logo-text span { color: var(--teal); }
+
+  .logo-subtitle {
+    font-family: var(--font-mono);
+    font-size: 0.62rem;
+    color: var(--text3);
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    margin-top: 2px;
+  }
+
+  .header-right {
+    display: flex;
+    align-items: center;
+    gap: 1.5rem;
+  }
+
+  .live-badge {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-family: var(--font-mono);
+    font-size: 0.65rem;
+    letter-spacing: 0.12em;
+    color: var(--green);
+    background: rgba(57, 217, 138, 0.1);
+    border: 1px solid rgba(57, 217, 138, 0.3);
+    padding: 4px 10px;
+    border-radius: 20px;
+  }
+
+  .live-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--green);
+    animation: pulse-dot 1.5s ease-in-out infinite;
+  }
+
+  @keyframes pulse-dot {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.5; transform: scale(0.8); }
+  }
+
+  .header-time {
+    font-family: var(--font-mono);
+    font-size: 0.7rem;
+    color: var(--text3);
+  }
+
+  .alert-badge {
+    background: rgba(255, 78, 78, 0.15);
+    border: 1px solid rgba(255, 78, 78, 0.4);
+    color: var(--red);
+    font-family: var(--font-mono);
+    font-size: 0.62rem;
+    padding: 4px 10px;
+    border-radius: 4px;
+    letter-spacing: 0.08em;
+    animation: alert-flash 2s ease-in-out infinite;
+  }
+
+  @keyframes alert-flash {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.6; }
+  }
+
+  /* ─── NAV TABS ─── */
+  nav {
+    background: var(--bg2);
+    border-bottom: 1px solid var(--border);
+    padding: 0 2rem;
+    display: flex;
+    gap: 0;
+  }
+
+  .nav-tab {
+    font-family: var(--font-mono);
+    font-size: 0.72rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    padding: 12px 20px;
+    cursor: pointer;
+    color: var(--text3);
+    border-bottom: 2px solid transparent;
+    transition: all 0.2s;
+    white-space: nowrap;
+    user-select: none;
+  }
+
+  .nav-tab:hover { color: var(--text2); }
+
+  .nav-tab.active {
+    color: var(--teal);
+    border-bottom-color: var(--teal);
+  }
+
+  /* ─── MAIN LAYOUT ─── */
+  main {
+    padding: 1.5rem 2rem;
+    max-width: 1600px;
+    margin: 0 auto;
+  }
+
+  .page { display: none; }
+  .page.active { display: block; }
+
+  /* ─── STAT CARDS ─── */
+  .stat-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+  }
+
+  .stat-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 1.2rem 1.4rem;
+    position: relative;
+    overflow: hidden;
+    transition: border-color 0.2s, transform 0.2s;
+  }
+
+  .stat-card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 2px;
+    background: var(--card-accent, var(--teal));
+    opacity: 0.8;
+  }
+
+  .stat-card:hover {
+    border-color: var(--border2);
+    transform: translateY(-1px);
+  }
+
+  .stat-label {
+    font-family: var(--font-mono);
+    font-size: 0.6rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--text3);
+    margin-bottom: 0.6rem;
+  }
+
+  .stat-value {
+    font-family: var(--font-display);
+    font-size: 2rem;
+    font-weight: 800;
+    line-height: 1;
+    color: var(--text);
+  }
+
+  .stat-value.danger { color: var(--red); }
+  .stat-value.warning { color: var(--amber); }
+  .stat-value.good { color: var(--green); }
+
+  .stat-sub {
+    font-size: 0.7rem;
+    color: var(--text3);
+    margin-top: 4px;
+  }
+
+  /* ─── MAIN GRID ─── */
+  .dashboard-grid {
+    display: grid;
+    grid-template-columns: 1fr 380px;
+    gap: 1.5rem;
+    margin-bottom: 1.5rem;
+  }
+
+  @media (max-width: 1100px) {
+    .dashboard-grid { grid-template-columns: 1fr; }
+  }
+
+  /* ─── PANEL ─── */
+  .panel {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    overflow: hidden;
+  }
+
+  .panel-header {
+    padding: 1rem 1.4rem;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: rgba(255,255,255,0.02);
+  }
+
+  .panel-title {
+    font-family: var(--font-display);
+    font-weight: 700;
+    font-size: 0.9rem;
+    letter-spacing: 0.01em;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .panel-title .icon {
+    font-size: 1rem;
+  }
+
+  .panel-badge {
+    font-family: var(--font-mono);
+    font-size: 0.6rem;
+    letter-spacing: 0.1em;
+    padding: 3px 8px;
+    border-radius: 4px;
+    background: var(--teal-glow);
+    color: var(--teal);
+    border: 1px solid rgba(0,212,170,0.3);
+  }
+
+  .panel-body { padding: 1.2rem 1.4rem; }
+
+  /* ─── MAP ─── */
+  #map {
+    height: 480px;
+    border-radius: 0;
+    background: var(--bg2);
+  }
+
+  .map-wrapper { position: relative; }
+
+  .map-legend {
+    position: absolute;
+    bottom: 20px;
+    left: 20px;
+    z-index: 1000;
+    background: rgba(6, 12, 20, 0.92);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 12px 16px;
+    backdrop-filter: blur(8px);
+  }
+
+  .legend-title {
+    font-family: var(--font-mono);
+    font-size: 0.6rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--text3);
+    margin-bottom: 8px;
+  }
+
+  .legend-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.72rem;
+    color: var(--text2);
+    margin-bottom: 4px;
+  }
+
+  .legend-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+
+  /* ─── WATER GAUGE ─── */
+  .zone-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    max-height: 480px;
+    overflow-y: auto;
+    padding-right: 4px;
+  }
+
+  .zone-list::-webkit-scrollbar { width: 4px; }
+  .zone-list::-webkit-scrollbar-track { background: var(--bg2); }
+  .zone-list::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 2px; }
+
+  .zone-item {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 12px 14px;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+
+  .zone-item:hover {
+    border-color: var(--border2);
+    background: var(--surface2);
+  }
+
+  .zone-item.selected {
+    border-color: var(--teal);
+    background: rgba(0,212,170,0.05);
+  }
+
+  .zone-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 8px;
+  }
+
+  .zone-name {
+    font-family: var(--font-display);
+    font-weight: 600;
+    font-size: 0.85rem;
+  }
+
+  .zone-status {
+    font-family: var(--font-mono);
+    font-size: 0.58rem;
+    letter-spacing: 0.08em;
+    padding: 2px 7px;
+    border-radius: 3px;
+    text-transform: uppercase;
+    font-weight: 700;
+  }
+
+  .status-extremely_low { background: rgba(255,78,78,0.15); color: #ff4e4e; border: 1px solid rgba(255,78,78,0.3); }
+  .status-critical { background: rgba(245,166,35,0.15); color: #f5a623; border: 1px solid rgba(245,166,35,0.3); }
+  .status-low { background: rgba(255,180,0,0.1); color: #ffb400; border: 1px solid rgba(255,180,0,0.25); }
+  .status-moderate { background: rgba(74,158,255,0.1); color: #4a9eff; border: 1px solid rgba(74,158,255,0.25); }
+  .status-high { background: rgba(57,217,138,0.1); color: #39d98a; border: 1px solid rgba(57,217,138,0.25); }
+  .status-extremely_high { background: rgba(0,212,170,0.15); color: #00d4aa; border: 1px solid rgba(0,212,170,0.3); }
+
+  .water-bar-wrap {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .water-bar-track {
+    flex: 1;
+    height: 6px;
+    background: var(--bg3);
+    border-radius: 3px;
+    overflow: hidden;
+  }
+
+  .water-bar-fill {
+    height: 100%;
+    border-radius: 3px;
+    transition: width 0.8s ease;
+  }
+
+  .water-depth {
+    font-family: var(--font-mono);
+    font-size: 0.68rem;
+    color: var(--text2);
+    white-space: nowrap;
+  }
+
+  /* ─── GRACE SATELLITE PANEL ─── */
+  .grace-info {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+    margin-bottom: 1.2rem;
+  }
+
+  .grace-stat {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 12px;
+  }
+
+  .grace-stat-label {
+    font-family: var(--font-mono);
+    font-size: 0.58rem;
+    letter-spacing: 0.1em;
+    color: var(--text3);
+    text-transform: uppercase;
+    margin-bottom: 4px;
+  }
+
+  .grace-stat-value {
+    font-family: var(--font-display);
+    font-weight: 700;
+    font-size: 1.2rem;
+    color: var(--amber);
+  }
+
+  /* ─── IOT SENSOR GRID ─── */
+  .sensor-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 1rem;
+  }
+
+  .sensor-card {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 1.2rem;
+    position: relative;
+    transition: all 0.2s;
+  }
+
+  .sensor-card:hover {
+    border-color: var(--border2);
+    transform: translateY(-2px);
+  }
+
+  .sensor-card.offline { opacity: 0.5; }
+
+  .sensor-card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 1rem;
+  }
+
+  .sensor-id {
+    font-family: var(--font-mono);
+    font-size: 0.65rem;
+    color: var(--teal);
+    letter-spacing: 0.06em;
+  }
+
+  .sensor-zone {
+    font-family: var(--font-display);
+    font-weight: 600;
+    font-size: 0.9rem;
+    margin-top: 2px;
+  }
+
+  .online-indicator {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    margin-top: 4px;
+  }
+
+  .online-indicator.on { background: var(--green); box-shadow: 0 0 6px var(--green); animation: pulse-dot 2s infinite; }
+  .online-indicator.off { background: var(--text3); }
+
+  .sensor-metrics {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+  }
+
+  .sensor-metric {
+    background: var(--surface);
+    border-radius: 6px;
+    padding: 8px 10px;
+  }
+
+  .metric-label {
+    font-family: var(--font-mono);
+    font-size: 0.55rem;
+    color: var(--text3);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    margin-bottom: 3px;
+  }
+
+  .metric-value {
+    font-family: var(--font-mono);
+    font-size: 0.85rem;
+    font-weight: 700;
+    color: var(--text);
+  }
+
+  .metric-value.alert { color: var(--red); }
+
+  /* ─── AI PREDICT PANEL ─── */
+  .predict-form {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+  }
+
+  .form-group {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .form-group.full { grid-column: 1 / -1; }
+
+  .form-label {
+    font-family: var(--font-mono);
+    font-size: 0.62rem;
+    letter-spacing: 0.1em;
+    color: var(--text3);
+    text-transform: uppercase;
+  }
+
+  .form-input, .form-select {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 10px 12px;
+    color: var(--text);
+    font-family: var(--font-body);
+    font-size: 0.85rem;
+    outline: none;
+    transition: border-color 0.2s;
+  }
+
+  .form-input:focus, .form-select:focus { border-color: var(--teal); }
+
+  .form-select option { background: var(--surface); }
+
+  .predict-btn {
+    background: linear-gradient(135deg, var(--teal), var(--blue));
+    color: var(--bg);
+    border: none;
+    border-radius: 8px;
+    padding: 12px 28px;
+    font-family: var(--font-display);
+    font-weight: 700;
+    font-size: 0.9rem;
+    cursor: pointer;
+    transition: all 0.2s;
+    width: 100%;
+    letter-spacing: 0.02em;
+  }
+
+  .predict-btn:hover { transform: translateY(-1px); box-shadow: 0 8px 24px rgba(0,212,170,0.3); }
+  .predict-btn:active { transform: translateY(0); }
+
+  /* ─── AI RESULT ─── */
+  .ai-result {
+    display: none;
+    animation: fadeUp 0.4s ease forwards;
+  }
+
+  .ai-result.show { display: block; }
+
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .risk-banner {
+    border-radius: 10px;
+    padding: 16px 20px;
+    margin-bottom: 1.2rem;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+  }
+
+  .risk-icon { font-size: 2rem; }
+
+  .risk-title {
+    font-family: var(--font-display);
+    font-weight: 800;
+    font-size: 1.1rem;
+  }
+
+  .risk-sub {
+    font-size: 0.78rem;
+    color: var(--text2);
+    margin-top: 3px;
+  }
+
+  .solutions-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 0.8rem;
+    margin-top: 1.2rem;
+  }
+
+  .solution-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 1rem;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .solution-card::after {
+    content: '';
+    position: absolute;
+    bottom: 0; left: 0; right: 0;
+    height: 2px;
+    background: var(--teal);
+    transform: scaleX(0);
+    transform-origin: left;
+    transition: transform 0.3s ease;
+  }
+
+  .solution-card:hover::after { transform: scaleX(1); }
+
+  .solution-name {
+    font-family: var(--font-display);
+    font-weight: 700;
+    font-size: 0.85rem;
+    margin-bottom: 8px;
+  }
+
+  .solution-meta {
+    font-family: var(--font-mono);
+    font-size: 0.62rem;
+    color: var(--text3);
+    line-height: 1.8;
+  }
+
+  .solution-roi {
+    font-family: var(--font-display);
+    font-weight: 700;
+    color: var(--teal);
+    font-size: 0.9rem;
+    margin-top: 6px;
+  }
+
+  /* ─── RECHARGE MAP ─── */
+  #recharge-map { height: 420px; }
+
+  /* ─── RAINFALL CHARTS ─── */
+  .charts-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1.5rem;
+    margin-bottom: 1.5rem;
+  }
+
+  .chart-container {
+    position: relative;
+    height: 220px;
+  }
+
+  /* ─── LOADING ─── */
+  .loading-overlay {
+    position: absolute;
+    inset: 0;
+    background: rgba(6,12,20,0.7);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 10;
+    border-radius: 14px;
+    backdrop-filter: blur(4px);
+  }
+
+  .spinner {
+    width: 32px;
+    height: 32px;
+    border: 2px solid var(--border);
+    border-top-color: var(--teal);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+  }
+
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* ─── ZONE DETAIL POPUP ─── */
+  .zone-detail-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.7);
+    z-index: 500;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    display: none;
+    backdrop-filter: blur(4px);
+  }
+
+  .zone-detail-overlay.open { display: flex; }
+
+  .zone-detail-modal {
+    background: var(--bg2);
+    border: 1px solid var(--border2);
+    border-radius: 16px;
+    padding: 2rem;
+    max-width: 620px;
+    width: 90%;
+    max-height: 85vh;
+    overflow-y: auto;
+    animation: fadeUp 0.3s ease;
+  }
+
+  .modal-close {
+    position: absolute;
+    top: 1.2rem; right: 1.2rem;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    color: var(--text2);
+    width: 32px; height: 32px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 1rem;
+    display: flex; align-items: center; justify-content: center;
+  }
+
+  .recs-list { list-style: none; padding: 0; }
+  .recs-list li {
+    padding: 8px 0;
+    border-bottom: 1px solid var(--border);
+    font-size: 0.82rem;
+    color: var(--text2);
+    display: flex; align-items: flex-start; gap: 8px;
+  }
+  .recs-list li::before { content: '→'; color: var(--teal); flex-shrink: 0; }
+
+  .rec-section-title {
+    font-family: var(--font-mono);
+    font-size: 0.62rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--text3);
+    margin: 1rem 0 6px;
+  }
+
+  /* ─── SATELLITE PANEL ─── */
+  .satellite-info-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+  }
+
+  .sat-stat {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 1rem;
+    text-align: center;
+  }
+
+  .sat-stat-icon { font-size: 1.5rem; margin-bottom: 6px; }
+  .sat-stat-val {
+    font-family: var(--font-display);
+    font-weight: 700;
+    font-size: 1.1rem;
+    color: var(--blue);
+  }
+  .sat-stat-lbl {
+    font-family: var(--font-mono);
+    font-size: 0.6rem;
+    color: var(--text3);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    margin-top: 4px;
+  }
+
+  /* ─── WATER SCALE WIDGET ─── */
+  .water-scale {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    padding: 1rem 0;
+  }
+
+  .scale-segment {
+    flex: 1;
+    height: 12px;
+    border-radius: 2px;
+    position: relative;
+  }
+
+  .scale-labels {
+    display: flex;
+    justify-content: space-between;
+    font-family: var(--font-mono);
+    font-size: 0.55rem;
+    color: var(--text3);
+    margin-top: 4px;
+    letter-spacing: 0.04em;
+  }
+
+  .scale-pointer {
+    position: absolute;
+    top: -4px;
+    transform: translateX(-50%);
+    width: 3px;
+    height: 20px;
+    background: white;
+    border-radius: 2px;
+  }
+
+  /* ─── RESPONSIVE ─── */
+  @media (max-width: 768px) {
+    nav { overflow-x: auto; }
+    .nav-tab { font-size: 0.65rem; padding: 12px 14px; }
+    main { padding: 1rem; }
+    .stat-grid { grid-template-columns: repeat(2, 1fr); }
+    .predict-form { grid-template-columns: 1fr; }
+    .charts-grid { grid-template-columns: 1fr; }
+    .satellite-info-grid { grid-template-columns: 1fr 1fr; }
+  }
+
+  /* Leaflet custom popups */
+  .leaflet-popup-content-wrapper {
+    background: var(--surface) !important;
+    border: 1px solid var(--border) !important;
+    border-radius: 10px !important;
+    color: var(--text) !important;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.5) !important;
+  }
+  .leaflet-popup-tip { background: var(--surface) !important; }
+  .leaflet-popup-content { margin: 12px 16px !important; font-family: var(--font-body); }
+
+  .popup-title {
+    font-family: var(--font-display);
+    font-weight: 700;
+    font-size: 0.95rem;
+    margin-bottom: 8px;
+  }
+  .popup-row {
+    font-size: 0.75rem;
+    color: var(--text2);
+    margin-bottom: 3px;
+  }
+  .popup-row span { color: var(--teal); font-family: var(--font-mono); font-size: 0.8rem; }
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<header>
+  <div class="logo">
+    <div class="logo-icon">🌊</div>
+    <div>
+      <div class="logo-text">Aqua<span>Trace</span></div>
+      <div class="logo-subtitle">North Bangalore · Groundwater Intelligence</div>
+    </div>
+  </div>
+  <div class="header-right">
+    <div class="alert-badge">⚠ ALERT LEVEL: HIGH</div>
+    <div class="live-badge"><div class="live-dot"></div>LIVE · IOT + GRACE</div>
+    <div class="header-time" id="clock">--:--:-- IST</div>
+  </div>
+</header>
+
+<!-- NAV -->
+<nav>
+  <div class="nav-tab active" onclick="switchTab('dashboard')">01 / Dashboard</div>
+  <div class="nav-tab" onclick="switchTab('satellite')">02 / GRACE Satellite</div>
+  <div class="nav-tab" onclick="switchTab('iot')">03 / IoT Sensors</div>
+  <div class="nav-tab" onclick="switchTab('recharge')">04 / Recharge Zones</div>
+  <div class="nav-tab" onclick="switchTab('predict')">05 / AI Predict</div>
+  <div class="nav-tab" onclick="switchTab('rainfall')">06 / Rainfall Analysis</div>
+</nav>
+
+<!-- MAIN CONTENT -->
+<main>
+
+  <!-- ═══ PAGE: DASHBOARD ═══ -->
+  <div class="page active" id="page-dashboard">
+
+    <div class="stat-grid" id="stat-grid">
+      <div class="stat-card" style="--card-accent: #ff4e4e;">
+        <div class="stat-label">Critical Zones</div>
+        <div class="stat-value danger" id="s-critical">—</div>
+        <div class="stat-sub">Require immediate action</div>
+      </div>
+      <div class="stat-card" style="--card-accent: #f5a623;">
+        <div class="stat-label">Avg Water Table Depth</div>
+        <div class="stat-value warning" id="s-depth">—</div>
+        <div class="stat-sub">Meters below ground</div>
+      </div>
+      <div class="stat-card" style="--card-accent: #4a9eff;">
+        <div class="stat-label">Total Borewells</div>
+        <div class="stat-value" id="s-borewells">—</div>
+        <div class="stat-sub">Monitored across all zones</div>
+      </div>
+      <div class="stat-card" style="--card-accent: #a855f7;">
+        <div class="stat-label">GRACE Anomaly</div>
+        <div class="stat-value danger" id="s-grace">—</div>
+        <div class="stat-sub">cm water equivalent</div>
+      </div>
+      <div class="stat-card" style="--card-accent: #39d98a;">
+        <div class="stat-label">IoT Sensors Online</div>
+        <div class="stat-value good" id="s-iot">—</div>
+        <div class="stat-sub">/ 12 total deployed</div>
+      </div>
+      <div class="stat-card" style="--card-accent: #00d4aa;">
+        <div class="stat-label">Zones Monitored</div>
+        <div class="stat-value" id="s-zones">—</div>
+        <div class="stat-sub">North Bangalore</div>
+      </div>
+    </div>
+
+    <div class="dashboard-grid">
+
+      <!-- MAP -->
+      <div class="panel">
+        <div class="panel-header">
+          <div class="panel-title"><span class="icon">🗺</span> Groundwater Depth Map — North Bangalore</div>
+          <div class="panel-badge">LIVE · LEAFLET + GRACE</div>
+        </div>
+        <div class="map-wrapper" style="position:relative;">
+          <div id="map"></div>
+          <div class="map-legend">
+            <div class="legend-title">Water Level Scale</div>
+            <div class="legend-item"><div class="legend-dot" style="background:#ff4e4e;"></div>Extremely Low (&gt;20m)</div>
+            <div class="legend-item"><div class="legend-dot" style="background:#f5a623;"></div>Critical (15–20m)</div>
+            <div class="legend-item"><div class="legend-dot" style="background:#ffb400;"></div>Low (12–15m)</div>
+            <div class="legend-item"><div class="legend-dot" style="background:#4a9eff;"></div>Moderate (8–12m)</div>
+            <div class="legend-item"><div class="legend-dot" style="background:#39d98a;"></div>High (4–8m)</div>
+            <div class="legend-item"><div class="legend-dot" style="background:#00d4aa;"></div>Extremely High (&lt;4m)</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ZONE LIST -->
+      <div class="panel">
+        <div class="panel-header">
+          <div class="panel-title"><span class="icon">📍</span> Zone Readings</div>
+          <div class="panel-badge">12 ZONES</div>
+        </div>
+        <div class="panel-body" style="padding: 12px;">
+          <div class="zone-list" id="zone-list">
+            <div style="text-align:center; padding:2rem; color:var(--text3);">Loading zones...</div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- GRACE TIME SERIES CHART -->
+    <div class="panel" style="margin-bottom:1.5rem;">
+      <div class="panel-header">
+        <div class="panel-title"><span class="icon">🛰</span> GRACE Terrestrial Water Storage Anomaly</div>
+        <div class="panel-badge">15-MONTH TREND</div>
+      </div>
+      <div class="panel-body">
+        <div class="chart-container" style="height:200px;">
+          <canvas id="grace-chart"></canvas>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+
+  <!-- ═══ PAGE: SATELLITE ═══ -->
+  <div class="page" id="page-satellite">
+
+    <div class="satellite-info-grid">
+      <div class="sat-stat"><div class="sat-stat-icon">🛰</div><div class="sat-stat-val">GRACE-FO</div><div class="sat-stat-lbl">Satellite Mission</div></div>
+      <div class="sat-stat"><div class="sat-stat-icon">📡</div><div class="sat-stat-val">NASA JPL</div><div class="sat-stat-lbl">Data Source</div></div>
+      <div class="sat-stat"><div class="sat-stat-icon">📅</div><div class="sat-stat-val">30-Day</div><div class="sat-stat-lbl">Data Granularity</div></div>
+      <div class="sat-stat"><div class="sat-stat-icon">📏</div><div class="sat-stat-val">~300km</div><div class="sat-stat-lbl">Spatial Resolution</div></div>
+      <div class="sat-stat"><div class="sat-stat-icon">💧</div><div class="sat-stat-val">-8.6 cm</div><div class="sat-stat-lbl">Current TWS Anomaly</div></div>
+      <div class="sat-stat"><div class="sat-stat-icon">🌍</div><div class="sat-stat-val">Gravity</div><div class="sat-stat-lbl">Measurement Method</div></div>
+    </div>
+
+    <div class="panel" style="margin-bottom:1.5rem;">
+      <div class="panel-header">
+        <div class="panel-title"><span class="icon">📈</span> GRACE TWS Anomaly — North Bangalore Region</div>
+        <div class="panel-badge">JAN 2023 – MAR 2024</div>
+      </div>
+      <div class="panel-body">
+        <div class="grace-info">
+          <div class="grace-stat">
+            <div class="grace-stat-label">Peak Depletion</div>
+            <div class="grace-stat-value">-22.4 cm</div>
+          </div>
+          <div class="grace-stat">
+            <div class="grace-stat-label">Peak Recharge</div>
+            <div class="grace-stat-value" style="color:var(--green);">+9.4 cm</div>
+          </div>
+          <div class="grace-stat">
+            <div class="grace-stat-label">Trend Direction</div>
+            <div class="grace-stat-value" style="color:var(--red);">↓ Declining</div>
+          </div>
+          <div class="grace-stat">
+            <div class="grace-stat-label">Annual Net Loss</div>
+            <div class="grace-stat-value">-6.2 cm/yr</div>
+          </div>
+        </div>
+        <div class="chart-container" style="height:260px;">
+          <canvas id="grace-detail-chart"></canvas>
+        </div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-header">
+        <div class="panel-title"><span class="icon">🔬</span> How GRACE Works for Groundwater</div>
+      </div>
+      <div class="panel-body">
+        <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap:1rem;">
+          <div style="background:var(--bg2); border:1px solid var(--border); border-radius:10px; padding:1rem;">
+            <div style="font-size:1.5rem; margin-bottom:8px;">🌍</div>
+            <div style="font-family:var(--font-display); font-weight:700; font-size:0.9rem; margin-bottom:6px;">Gravity Measurement</div>
+            <div style="font-size:0.78rem; color:var(--text2); line-height:1.6;">GRACE-FO satellites detect minute variations in Earth's gravitational field caused by changes in water mass stored underground.</div>
+          </div>
+          <div style="background:var(--bg2); border:1px solid var(--border); border-radius:10px; padding:1rem;">
+            <div style="font-size:1.5rem; margin-bottom:8px;">💧</div>
+            <div style="font-family:var(--font-display); font-weight:700; font-size:0.9rem; margin-bottom:6px;">TWS Anomaly</div>
+            <div style="font-size:0.78rem; color:var(--text2); line-height:1.6;">Terrestrial Water Storage anomaly = deviation from the 2004–2009 baseline. Negative = water depletion. Positive = recharge above baseline.</div>
+          </div>
+          <div style="background:var(--bg2); border:1px solid var(--border); border-radius:10px; padding:1rem;">
+            <div style="font-size:1.5rem; margin-bottom:8px;">📊</div>
+            <div style="font-family:var(--font-display); font-weight:700; font-size:0.9rem; margin-bottom:6px;">Groundwater Isolation</div>
+            <div style="font-size:0.78rem; color:var(--text2); line-height:1.6;">Combining GRACE data with soil moisture models (GLDAS) isolates the groundwater storage component from surface water and soil moisture.</div>
+          </div>
+          <div style="background:var(--bg2); border:1px solid var(--border); border-radius:10px; padding:1rem;">
+            <div style="font-size:1.5rem; margin-bottom:8px;">🤖</div>
+            <div style="font-family:var(--font-display); font-weight:700; font-size:0.9rem; margin-bottom:6px;">AI Downscaling</div>
+            <div style="font-size:0.78rem; color:var(--text2); line-height:1.6;">Machine learning downscales GRACE's ~300km resolution to local zone-level (1–5km) by fusing with IoT sensor ground truth data.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+
+  <!-- ═══ PAGE: IOT SENSORS ═══ -->
+  <div class="page" id="page-iot">
+    <div class="panel" style="margin-bottom:1.5rem;">
+      <div class="panel-header">
+        <div class="panel-title"><span class="icon">📡</span> IoT Sensor Network</div>
+        <div id="network-health-badge" class="panel-badge">Loading...</div>
+      </div>
+      <div class="panel-body">
+        <div style="display:grid; grid-template-columns:repeat(auto-fit,minmax(180px,1fr)); gap:1rem; margin-bottom:1.5rem;">
+          <div class="grace-stat"><div class="grace-stat-label">Total Sensors</div><div class="grace-stat-value" id="iot-total" style="color:var(--blue);">—</div></div>
+          <div class="grace-stat"><div class="grace-stat-label">Online</div><div class="grace-stat-value" id="iot-online" style="color:var(--green);">—</div></div>
+          <div class="grace-stat"><div class="grace-stat-label">Offline</div><div class="grace-stat-value" id="iot-offline" style="color:var(--red);">—</div></div>
+          <div class="grace-stat"><div class="grace-stat-label">Avg Battery</div><div class="grace-stat-value" id="iot-battery" style="color:var(--amber);">—</div></div>
+        </div>
+        <div class="sensor-grid" id="sensor-grid">
+          <div style="text-align:center; padding:3rem; color:var(--text3); grid-column:1/-1;">Loading sensors...</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+
+  <!-- ═══ PAGE: RECHARGE ZONES ═══ -->
+  <div class="page" id="page-recharge">
+    <div class="panel" style="margin-bottom:1.5rem;">
+      <div class="panel-header">
+        <div class="panel-title"><span class="icon">🌿</span> Groundwater Recharge Zone Map</div>
+        <div class="panel-badge">GEOSPATIAL ANALYSIS</div>
+      </div>
+      <div id="recharge-map"></div>
+    </div>
+
+    <div style="display:grid; grid-template-columns:repeat(auto-fit,minmax(300px,1fr)); gap:1rem;">
+      <div class="panel">
+        <div class="panel-header"><div class="panel-title"><span class="icon">💦</span> Recharge Zone Details</div></div>
+        <div class="panel-body" id="recharge-zone-list">
+          Loading...
+        </div>
+      </div>
+      <div class="panel">
+        <div class="panel-header"><div class="panel-title"><span class="icon">🏗</span> Recommended Structures</div></div>
+        <div class="panel-body">
+          <div style="display:grid; gap:10px;">
+            <div style="background:var(--bg2); border:1px solid var(--border); border-radius:8px; padding:12px;">
+              <div style="font-family:var(--font-display); font-weight:700; font-size:0.9rem; margin-bottom:4px; color:var(--teal);">Percolation Ponds</div>
+              <div style="font-size:0.78rem; color:var(--text2); line-height:1.6;">Shallow excavations that allow rainwater to seep into the ground. Ideal for areas with sandy loam / red laterite soil. Capacity: 45,000–2,50,000 L.</div>
+            </div>
+            <div style="background:var(--bg2); border:1px solid var(--border); border-radius:8px; padding:12px;">
+              <div style="font-family:var(--font-display); font-weight:700; font-size:0.9rem; margin-bottom:4px; color:var(--blue);">Recharge Shafts</div>
+              <div style="font-size:0.78rem; color:var(--text2); line-height:1.6;">Vertical borings (30–60m deep) that bypass low-permeability layers to directly recharge deeper aquifers. ROI: 3 years.</div>
+            </div>
+            <div style="background:var(--bg2); border:1px solid var(--border); border-radius:8px; padding:12px;">
+              <div style="font-family:var(--font-display); font-weight:700; font-size:0.9rem; margin-bottom:4px; color:var(--amber);">Check Dams</div>
+              <div style="font-size:0.78rem; color:var(--text2); line-height:1.6;">Small barriers across seasonal streams to slow runoff and maximize infiltration into natural recharge zones. Best for rural belts near Nandi Hills.</div>
+            </div>
+            <div style="background:var(--bg2); border:1px solid var(--border); border-radius:8px; padding:12px;">
+              <div style="font-family:var(--font-display); font-weight:700; font-size:0.9rem; margin-bottom:4px; color:var(--green);">Rooftop RWH</div>
+              <div style="font-size:0.78rem; color:var(--text2); line-height:1.6;">Collects rooftop rainwater and diverts to sump/borewell recharge pit. Mandatory for plots &gt;200 sqm. Payback: 2 years.</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+
+  <!-- ═══ PAGE: AI PREDICT ═══ -->
+  <div class="page" id="page-predict">
+    <div style="display:grid; grid-template-columns:1fr 1fr; gap:1.5rem;">
+
+      <div class="panel">
+        <div class="panel-header">
+          <div class="panel-title"><span class="icon">🤖</span> AI Groundwater Predictor</div>
+          <div class="panel-badge">CLAUDE-POWERED</div>
+        </div>
+        <div class="panel-body">
+          <p style="font-size:0.8rem; color:var(--text2); margin-bottom:1.2rem; line-height:1.6;">
+            Enter your location details to get AI-powered groundwater analysis and rainwater harvesting recommendations tailored to your specific area in North Bangalore.
+          </p>
+
+          <div class="predict-form">
+            <div class="form-group">
+              <label class="form-label">Zone / Area</label>
+              <select class="form-select" id="predict-zone">
+                <option value="">Select zone...</option>
+                <option value="13.1007,77.5963">Yelahanka</option>
+                <option value="13.0358,77.5970">Hebbal</option>
+                <option value="13.2483,77.7109">Devanahalli</option>
+                <option value="13.2956,77.5373">Doddaballapur</option>
+                <option value="13.0654,77.6317">Thanisandra</option>
+                <option value="13.0785,77.6098">Kogilu</option>
+                <option value="13.0743,77.5978">Jakkur</option>
+                <option value="13.1652,77.7388">Bagalur</option>
+                <option value="13.1104,77.6156">Bellary Road</option>
+                <option value="13.3703,77.6839">Nandi Hills</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Plot Area (sq m)</label>
+              <input type="number" class="form-input" id="predict-area" placeholder="e.g. 300" />
+            </div>
+            <div class="form-group">
+              <label class="form-label">Building Type</label>
+              <select class="form-select" id="predict-type">
+                <option value="residential">Residential</option>
+                <option value="commercial">Commercial</option>
+                <option value="apartment">Apartment Complex</option>
+                <option value="industrial">Industrial</option>
+                <option value="open_land">Open Land</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Avg Annual Rainfall (mm)</label>
+              <input type="number" class="form-input" id="predict-rain" placeholder="e.g. 860" value="860" />
+            </div>
+            <div class="form-group full">
+              <button class="predict-btn" onclick="runPrediction()">🤖 Analyze & Predict Solutions</button>
+            </div>
+          </div>
+
+          <div class="ai-result" id="ai-result">
+            <div class="risk-banner" id="risk-banner">
+              <div class="risk-icon" id="risk-icon">⚠️</div>
+              <div>
+                <div class="risk-title" id="risk-title">Analysis Result</div>
+                <div class="risk-sub" id="risk-sub">Zone: — | Status: —</div>
+              </div>
+            </div>
+
+            <div id="ai-recs-content"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-header">
+          <div class="panel-title"><span class="icon">💡</span> Ranked Solutions</div>
+          <div class="panel-badge">BY ROI</div>
+        </div>
+        <div class="panel-body" id="solutions-panel">
+          <div style="text-align:center; padding:3rem; color:var(--text3); font-size:0.8rem;">
+            Run the AI predictor to see<br/>ranked solutions for your location.
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+
+  <!-- ═══ PAGE: RAINFALL ═══ -->
+  <div class="page" id="page-rainfall">
+
+    <div class="charts-grid">
+      <div class="panel">
+        <div class="panel-header">
+          <div class="panel-title"><span class="icon">🌧</span> Monthly Rainfall 2023</div>
+          <div class="panel-badge">MM / MONTH</div>
+        </div>
+        <div class="panel-body">
+          <div class="chart-container"><canvas id="rainfall-chart"></canvas></div>
+        </div>
+      </div>
+      <div class="panel">
+        <div class="panel-header">
+          <div class="panel-title"><span class="icon">💧</span> Percolation Rate by Soil Type</div>
+          <div class="panel-badge">MM / HOUR</div>
+        </div>
+        <div class="panel-body">
+          <div class="chart-container"><canvas id="percolation-chart"></canvas></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="panel" style="margin-bottom:1.5rem;">
+      <div class="panel-header">
+        <div class="panel-title"><span class="icon">📊</span> Water Recharge Potential by Month</div>
+        <div class="panel-badge">NORTH BANGALORE</div>
+      </div>
+      <div class="panel-body">
+        <div class="chart-container" style="height:200px;"><canvas id="recharge-potential-chart"></canvas></div>
+      </div>
+    </div>
+
+    <div style="display:grid; grid-template-columns:repeat(auto-fit,minmax(280px,1fr)); gap:1rem;">
+      <div class="panel">
+        <div class="panel-header"><div class="panel-title"><span class="icon">🏊</span> Percolation Pond Sizing</div></div>
+        <div class="panel-body">
+          <div style="display:grid; gap:8px;">
+            <div style="background:var(--bg2); border:1px solid var(--border); border-radius:8px; padding:12px; display:flex; justify-content:space-between; align-items:center;">
+              <div><div style="font-family:var(--font-display); font-weight:600; font-size:0.85rem;">Residential (100 sqm)</div><div style="font-size:0.72rem; color:var(--text3); margin-top:2px;">Standard site</div></div>
+              <div style="font-family:var(--font-mono); color:var(--teal);">45,000 L</div>
+            </div>
+            <div style="background:var(--bg2); border:1px solid var(--border); border-radius:8px; padding:12px; display:flex; justify-content:space-between; align-items:center;">
+              <div><div style="font-family:var(--font-display); font-weight:600; font-size:0.85rem;">Commercial (500 sqm)</div><div style="font-size:0.72rem; color:var(--text3); margin-top:2px;">Office / retail</div></div>
+              <div style="font-family:var(--font-mono); color:var(--teal);">2,25,000 L</div>
+            </div>
+            <div style="background:var(--bg2); border:1px solid var(--border); border-radius:8px; padding:12px; display:flex; justify-content:space-between; align-items:center;">
+              <div><div style="font-family:var(--font-display); font-weight:600; font-size:0.85rem;">Industrial (1000 sqm)</div><div style="font-size:0.72rem; color:var(--text3); margin-top:2px;">Factory / warehouse</div></div>
+              <div style="font-family:var(--font-mono); color:var(--teal);">4,50,000 L</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="panel">
+        <div class="panel-header"><div class="panel-title"><span class="icon">📅</span> Optimal Recharge Window</div></div>
+        <div class="panel-body">
+          <div style="font-size:0.8rem; color:var(--text2); line-height:1.8; margin-bottom:1rem;">
+            The <strong style="color:var(--teal);">Southwest Monsoon (Jun–Sep)</strong> and <strong style="color:var(--blue);">Northeast Monsoon (Oct–Nov)</strong> account for <strong style="color:var(--amber);">~87%</strong> of North Bangalore's annual rainfall.
+          </div>
+          <div style="background:var(--bg2); border:1px solid var(--border); border-radius:8px; padding:12px; margin-bottom:8px;">
+            <div style="font-family:var(--font-mono); font-size:0.65rem; color:var(--text3); letter-spacing:0.1em; margin-bottom:6px;">PEAK RECHARGE MONTHS</div>
+            <div style="display:flex; gap:6px; flex-wrap:wrap;">
+              <span style="background:rgba(0,212,170,0.15); border:1px solid rgba(0,212,170,0.3); color:var(--teal); padding:3px 10px; border-radius:20px; font-family:var(--font-mono); font-size:0.72rem;">Jun</span>
+              <span style="background:rgba(0,212,170,0.15); border:1px solid rgba(0,212,170,0.3); color:var(--teal); padding:3px 10px; border-radius:20px; font-family:var(--font-mono); font-size:0.72rem;">Jul</span>
+              <span style="background:rgba(0,212,170,0.15); border:1px solid rgba(0,212,170,0.3); color:var(--teal); padding:3px 10px; border-radius:20px; font-family:var(--font-mono); font-size:0.72rem;">Aug</span>
+              <span style="background:rgba(0,212,170,0.15); border:1px solid rgba(0,212,170,0.3); color:var(--teal); padding:3px 10px; border-radius:20px; font-family:var(--font-mono); font-size:0.72rem;">Sep</span>
+              <span style="background:rgba(0,212,170,0.15); border:1px solid rgba(0,212,170,0.3); color:var(--teal); padding:3px 10px; border-radius:20px; font-family:var(--font-mono); font-size:0.72rem;">Oct</span>
+            </div>
+          </div>
+          <div style="font-size:0.75rem; color:var(--text3);">Pre-monsoon check dam and percolation pond construction should be completed by <span style="color:var(--amber);">May 31st</span> annually.</div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+</main>
+
+<!-- ZONE DETAIL MODAL -->
+<div class="zone-detail-overlay" id="zone-modal">
+  <div class="zone-detail-modal" style="position:relative;">
+    <button class="modal-close" onclick="closeModal()">✕</button>
+    <div id="modal-content"></div>
+  </div>
+</div>
+
+<script>
+// ─── CONSTANTS ───────────────────────────────────────────────────────
+const API = '';  // Empty = same origin; change to 'http://localhost:3000' for dev
+const statusColors = {
+  extremely_low: '#ff4e4e',
+  critical: '#f5a623',
+  low: '#ffb400',
+  moderate: '#4a9eff',
+  high: '#39d98a',
+  extremely_high: '#00d4aa'
+};
+const statusLabels = {
+  extremely_low: 'EXTREMELY LOW',
+  critical: 'CRITICAL',
+  low: 'LOW',
+  moderate: 'MODERATE',
+  high: 'HIGH',
+  extremely_high: 'EXTREMELY HIGH'
+};
+
+// ─── CLOCK ───────────────────────────────────────────────────────────
+function updateClock() {
+  const now = new Date();
+  document.getElementById('clock').textContent =
+    now.toLocaleTimeString('en-IN', { timeZone: 'Asia/Kolkata', hour12: false }) + ' IST';
+}
+setInterval(updateClock, 1000); updateClock();
+
+// ─── NAVIGATION ──────────────────────────────────────────────────────
+let currentTab = 'dashboard';
+const tabInit = {};
+
+function switchTab(tab) {
+  document.querySelectorAll('.nav-tab').forEach((el, i) => el.classList.remove('active'));
+  document.querySelectorAll('.nav-tab').forEach(el => {
+    if (el.textContent.toLowerCase().includes(tab)) el.classList.add('active');
+  });
+  document.querySelectorAll('.page').forEach(el => el.classList.remove('active'));
+  document.getElementById('page-' + tab).classList.add('active');
+  currentTab = tab;
+
+  if (!tabInit[tab]) {
+    tabInit[tab] = true;
+    if (tab === 'satellite') initSatellitePage();
+    if (tab === 'iot') loadIoTSensors();
+    if (tab === 'recharge') initRechargePage();
+    if (tab === 'rainfall') initRainfallPage();
+  }
+}
+
+// ─── FETCH HELPERS ───────────────────────────────────────────────────
+async function apiFetch(path) {
+  try {
+    const res = await fetch(API + path);
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    return await res.json();
+  } catch (e) {
+    console.error('API fetch failed:', path, e);
+    return null;
+  }
+}
+
+// ─── MOCK DATA (fallback when backend not running) ───────────────────
+const MOCK_ZONES = [
+  { id:"zone_001", name:"Yelahanka", lat:13.1007, lng:77.5963, groundwaterLevel:18.4, graceAnomaly:-12.3, rechargeRate:0.8, status:"critical", iotSensorId:"IOT-YLK-001", borewellCount:847 },
+  { id:"zone_002", name:"Hebbal", lat:13.0358, lng:77.5970, groundwaterLevel:22.1, graceAnomaly:-18.7, rechargeRate:0.4, status:"extremely_low", iotSensorId:"IOT-HBL-002", borewellCount:1243 },
+  { id:"zone_003", name:"Devanahalli", lat:13.2483, lng:77.7109, groundwaterLevel:9.2, graceAnomaly:4.1, rechargeRate:2.3, status:"moderate", iotSensorId:"IOT-DVH-003", borewellCount:312 },
+  { id:"zone_004", name:"Doddaballapur", lat:13.2956, lng:77.5373, groundwaterLevel:11.8, graceAnomaly:-3.2, rechargeRate:1.6, status:"low", iotSensorId:"IOT-DBP-004", borewellCount:528 },
+  { id:"zone_005", name:"Thanisandra", lat:13.0654, lng:77.6317, groundwaterLevel:24.6, graceAnomaly:-22.4, rechargeRate:0.2, status:"extremely_low", iotSensorId:"IOT-TNS-005", borewellCount:1567 },
+  { id:"zone_006", name:"Kogilu", lat:13.0785, lng:77.6098, groundwaterLevel:20.3, graceAnomaly:-15.8, rechargeRate:0.5, status:"critical", iotSensorId:"IOT-KGL-006", borewellCount:934 },
+  { id:"zone_007", name:"Jakkur", lat:13.0743, lng:77.5978, groundwaterLevel:17.9, graceAnomaly:-10.1, rechargeRate:1.1, status:"critical", iotSensorId:"IOT-JKR-007", borewellCount:721 },
+  { id:"zone_008", name:"Bagalur", lat:13.1652, lng:77.7388, groundwaterLevel:7.4, graceAnomaly:8.9, rechargeRate:3.1, status:"high", iotSensorId:"IOT-BGL-008", borewellCount:187 },
+  { id:"zone_009", name:"Bellary Road", lat:13.1104, lng:77.6156, groundwaterLevel:21.7, graceAnomaly:-19.3, rechargeRate:0.3, status:"extremely_low", iotSensorId:"IOT-BRC-009", borewellCount:1893 },
+  { id:"zone_010", name:"Nandi Hills", lat:13.3703, lng:77.6839, groundwaterLevel:4.1, graceAnomaly:14.2, rechargeRate:4.7, status:"extremely_high", iotSensorId:"IOT-NDH-010", borewellCount:94 },
+  { id:"zone_011", name:"Chikkajala", lat:13.1893, lng:77.6587, groundwaterLevel:13.2, graceAnomaly:-5.6, rechargeRate:1.4, status:"low", iotSensorId:"IOT-CKJ-011", borewellCount:445 },
+  { id:"zone_012", name:"Virgonagar", lat:13.0236, lng:77.7112, groundwaterLevel:16.8, graceAnomaly:-9.4, rechargeRate:0.9, status:"critical", iotSensorId:"IOT-VGN-012", borewellCount:612 }
+];
+
+const GRACE_DATA = [
+  {month:"Jan 23",anomaly:-8.2},{month:"Feb 23",anomaly:-9.1},{month:"Mar 23",anomaly:-7.8},
+  {month:"Apr 23",anomaly:-5.4},{month:"May 23",anomaly:-2.1},{month:"Jun 23",anomaly:3.4},
+  {month:"Jul 23",anomaly:6.7},{month:"Aug 23",anomaly:8.1},{month:"Sep 23",anomaly:9.4},
+  {month:"Oct 23",anomaly:7.2},{month:"Nov 23",anomaly:2.8},{month:"Dec 23",anomaly:-3.6},
+  {month:"Jan 24",anomaly:-11.3},{month:"Feb 24",anomaly:-13.8},{month:"Mar 24",anomaly:-15.2}
+];
+
+const AI_RECS = {
+  extremely_low: { priority:"CRITICAL", estimatedRecoveryTime:"18-24 months with intervention", immediate:["Emergency borewell moratorium","Deploy mobile water tankers","Activate crisis water management protocol"], shortTerm:["Construct percolation ponds (3-5 units)","Install rooftop rainwater harvesting","Create check dams on storm drains"], longTerm:["Managed Aquifer Recharge (MAR) program","Large-scale watershed restoration","Recharge shaft construction (50+ units)"] },
+  critical: { priority:"HIGH", estimatedRecoveryTime:"12-18 months with intervention", immediate:["Regulate borewell extraction hours","Install flow meters on all borewells","Identify and seal illegal borewells"], shortTerm:["Construct 2-3 percolation ponds","Community rainwater harvesting program","Storm drain diversion to recharge pits"], longTerm:["Phased aquifer recharge program","Lake restoration and deepening","Permeable pavement installation"] },
+  low: { priority:"MEDIUM", estimatedRecoveryTime:"6-12 months with intervention", immediate:["Monitor extraction rates closely","Public awareness campaign"], shortTerm:["Build 1-2 percolation ponds","Soak pits in residential complexes","Green infrastructure corridors"], longTerm:["Maintain intervention programs","Expand recharge zones"] },
+  moderate: { priority:"WATCH", estimatedRecoveryTime:"Stable - maintain current measures", immediate:["Continue monitoring","Maintain existing recharge structures"], shortTerm:["Optimize percolation infrastructure"], longTerm:["Preventive maintenance","Expand lake network"] },
+  high: { priority:"GOOD", estimatedRecoveryTime:"Positive trajectory", immediate:["Document best practices"], shortTerm:["Replicate successful models","Establish groundwater banking"], longTerm:["Sustain recharge programs"] },
+  extremely_high: { priority:"EXCELLENT", estimatedRecoveryTime:"Optimal - replicate model", immediate:["Monitor to prevent waterlogging"], shortTerm:["Export model to depleted zones"], longTerm:["Groundwater banking","Carbon credits for recharge"] }
+};
+
+// ─── DASHBOARD INIT ───────────────────────────────────────────────────
+let zonesData = [];
+let mainMap = null;
+
+async function initDashboard() {
+  const data = await apiFetch('/api/summary');
+  if (data && data.success) {
+    document.getElementById('s-critical').textContent = data.data.critical_zones;
+    document.getElementById('s-depth').textContent = data.data.average_water_table_depth_m + 'm';
+    document.getElementById('s-borewells').textContent = data.data.total_borewells_monitored.toLocaleString();
+    document.getElementById('s-grace').textContent = data.data.overall_grace_anomaly_cm + ' cm';
+    document.getElementById('s-iot').textContent = data.data.iot_sensors_online;
+    document.getElementById('s-zones').textContent = data.data.total_zones_monitored;
+  } else {
+    // Use mock data
+    document.getElementById('s-critical').textContent = '5';
+    document.getElementById('s-depth').textContent = '15.6m';
+    document.getElementById('s-borewells').textContent = '9,383';
+    document.getElementById('s-grace').textContent = '-8.6 cm';
+    document.getElementById('s-iot').textContent = '11';
+    document.getElementById('s-zones').textContent = '12';
+  }
+
+  const zonesRes = await apiFetch('/api/zones');
+  zonesData = zonesRes && zonesRes.success ? zonesRes.data : MOCK_ZONES;
+
+  renderZoneList(zonesData);
+  initMainMap(zonesData);
+  initGraceChart();
+}
+
+// ─── ZONE LIST ────────────────────────────────────────────────────────
+function depthToPercent(depth) {
+  // 0m=100% full, 30m+=0%
+  return Math.max(0, Math.min(100, 100 - (depth / 30) * 100));
+}
+
+function renderZoneList(zones) {
+  const list = document.getElementById('zone-list');
+  list.innerHTML = zones.map(zone => {
+    const pct = depthToPercent(zone.groundwaterLevel);
+    const col = statusColors[zone.status];
+    return `
+    <div class="zone-item" onclick="showZoneModal('${zone.id}')">
+      <div class="zone-top">
+        <div class="zone-name">${zone.name}</div>
+        <div class="zone-status status-${zone.status}">${statusLabels[zone.status]}</div>
+      </div>
+      <div class="water-bar-wrap">
+        <div class="water-bar-track">
+          <div class="water-bar-fill" style="width:${pct}%; background:${col};"></div>
+        </div>
+        <div class="water-depth">${zone.groundwaterLevel}m ↓</div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+// ─── MAIN MAP ─────────────────────────────────────────────────────────
+function initMainMap(zones) {
+  if (mainMap) { mainMap.remove(); }
+
+  mainMap = L.map('map', {
+    center: [13.15, 77.62],
+    zoom: 10,
+    zoomControl: true
+  });
+
+  // Dark tile layer
+  L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+    attribution: '© OpenStreetMap contributors © CARTO',
+    maxZoom: 18
+  }).addTo(mainMap);
+
+  zones.forEach(zone => {
+    const color = statusColors[zone.status];
+    const radius = 800 + zone.borewellCount / 100;
+
+    // Circle marker
+    const circle = L.circleMarker([zone.lat, zone.lng], {
+      radius: 12 + Math.min(zone.groundwaterLevel, 15),
+      fillColor: color,
+      color: color,
+      fillOpacity: 0.35,
+      weight: 2,
+      opacity: 0.8
+    }).addTo(mainMap);
+
+    const graceSign = zone.graceAnomaly > 0 ? '+' : '';
+    circle.bindPopup(`
+      <div class="popup-title">${zone.name}</div>
+      <div class="popup-row">Status: <span style="color:${color}">${statusLabels[zone.status]}</span></div>
+      <div class="popup-row">Water Depth: <span>${zone.groundwaterLevel}m below ground</span></div>
+      <div class="popup-row">GRACE Anomaly: <span style="color:${zone.graceAnomaly < 0 ? '#ff4e4e' : '#39d98a'}">${graceSign}${zone.graceAnomaly} cm</span></div>
+      <div class="popup-row">Recharge Rate: <span>${zone.rechargeRate} mm/day</span></div>
+      <div class="popup-row">Borewells: <span>${zone.borewellCount.toLocaleString()}</span></div>
+      <div class="popup-row">Sensor: <span>${zone.iotSensorId}</span></div>
+    `);
+
+    // Pulse ring for critical zones
+    if (zone.status === 'extremely_low' || zone.status === 'critical') {
+      L.circleMarker([zone.lat, zone.lng], {
+        radius: 20,
+        fillColor: 'transparent',
+        color: color,
+        fillOpacity: 0,
+        weight: 1,
+        opacity: 0.3
+      }).addTo(mainMap);
+    }
+  });
+}
+
+// ─── GRACE CHART (Dashboard) ──────────────────────────────────────────
+function initGraceChart() {
+  const ctx = document.getElementById('grace-chart').getContext('2d');
+  const gradient = ctx.createLinearGradient(0, 0, 0, 200);
+  gradient.addColorStop(0, 'rgba(255,78,78,0.4)');
+  gradient.addColorStop(0.5, 'rgba(255,78,78,0.05)');
+  gradient.addColorStop(1, 'transparent');
+
+  new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels: GRACE_DATA.map(d => d.month),
+      datasets: [{
+        label: 'TWS Anomaly (cm)',
+        data: GRACE_DATA.map(d => d.anomaly),
+        borderColor: '#ff4e4e',
+        backgroundColor: gradient,
+        borderWidth: 2,
+        pointRadius: 3,
+        pointBackgroundColor: GRACE_DATA.map(d => d.anomaly >= 0 ? '#39d98a' : '#ff4e4e'),
+        tension: 0.4,
+        fill: true
+      }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: false }, tooltip: {
+        backgroundColor: '#0f1f36', borderColor: '#1e3a5f', borderWidth: 1,
+        titleColor: '#e2eaf4', bodyColor: '#8fa8c4'
+      }},
+      scales: {
+        x: { grid: { color: '#1e3a5f' }, ticks: { color: '#4e6d8e', font: { family: 'Space Mono', size: 10 } } },
+        y: {
+          grid: { color: '#1e3a5f' }, ticks: { color: '#4e6d8e', font: { family: 'Space Mono', size: 10 } },
+          title: { display: true, text: 'cm water equivalent', color: '#4e6d8e', font: { family: 'Inter', size: 11 } }
+        }
+      }
+    }
+  });
+}
+
+// ─── SATELLITE PAGE ───────────────────────────────────────────────────
+function initSatellitePage() {
+  const ctx = document.getElementById('grace-detail-chart').getContext('2d');
+  const posGrad = ctx.createLinearGradient(0, 0, 0, 260);
+  posGrad.addColorStop(0, 'rgba(57,217,138,0.3)');
+  posGrad.addColorStop(1, 'transparent');
+
+  new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: GRACE_DATA.map(d => d.month),
+      datasets: [{
+        label: 'GRACE TWS Anomaly (cm)',
+        data: GRACE_DATA.map(d => d.anomaly),
+        backgroundColor: GRACE_DATA.map(d => d.anomaly >= 0 ? 'rgba(57,217,138,0.5)' : 'rgba(255,78,78,0.5)'),
+        borderColor: GRACE_DATA.map(d => d.anomaly >= 0 ? '#39d98a' : '#ff4e4e'),
+        borderWidth: 1,
+        borderRadius: 3
+      }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: false }, tooltip: {
+        backgroundColor: '#0f1f36', borderColor: '#1e3a5f', borderWidth: 1,
+        titleColor: '#e2eaf4', bodyColor: '#8fa8c4'
+      }},
+      scales: {
+        x: { grid: { color: '#1e3a5f' }, ticks: { color: '#4e6d8e', font: { family: 'Space Mono', size: 10 } } },
+        y: {
+          grid: { color: '#1e3a5f' }, ticks: { color: '#4e6d8e', font: { family: 'Space Mono', size: 10 } },
+          title: { display: true, text: 'cm water equivalent anomaly', color: '#4e6d8e' }
+        }
+      }
+    }
+  });
+}
+
+// ─── IOT SENSORS ─────────────────────────────────────────────────────
+async function loadIoTSensors() {
+  const data = await apiFetch('/api/iot/sensors');
+  let sensors, health;
+
+  if (data && data.success) {
+    sensors = data.data;
+    health = data.network_health;
+  } else {
+    sensors = MOCK_ZONES.map(z => ({
+      sensor_id: z.iotSensorId, zone: z.name, lat: z.lat, lng: z.lng,
+      readings: {
+        water_table_depth_m: +(z.groundwaterLevel + (Math.random()-0.5)*0.3).toFixed(2),
+        turbidity_ntu: +(Math.random()*15+0.5).toFixed(1),
+        ph: +(Math.random()*2+6.5).toFixed(2),
+        tds_ppm: +(Math.random()*400+200).toFixed(0),
+        temperature_c: +(Math.random()*5+24).toFixed(1),
+        battery_percent: Math.floor(Math.random()*40+60),
+        online: Math.random() > 0.1
+      },
+      last_ping: new Date(Date.now()-Math.random()*300000).toISOString()
+    }));
+    health = { total_sensors:12, online:11, offline:1, avg_battery:75 };
+  }
+
+  document.getElementById('iot-total').textContent = health.total_sensors;
+  document.getElementById('iot-online').textContent = health.online;
+  document.getElementById('iot-offline').textContent = health.offline;
+  document.getElementById('iot-battery').textContent = health.avg_battery + '%';
+  document.getElementById('network-health-badge').textContent = `${health.online}/${health.total_sensors} ONLINE`;
+
+  const grid = document.getElementById('sensor-grid');
+  grid.innerHTML = sensors.map(s => {
+    const zone = MOCK_ZONES.find(z => z.iotSensorId === s.sensor_id) || {};
+    const color = statusColors[zone.status] || '#4a9eff';
+    return `
+    <div class="sensor-card ${s.readings.online ? '' : 'offline'}">
+      <div class="sensor-card-header">
+        <div>
+          <div class="sensor-id">${s.sensor_id}</div>
+          <div class="sensor-zone">${s.zone}</div>
+        </div>
+        <div class="online-indicator ${s.readings.online ? 'on' : 'off'}"></div>
+      </div>
+      <div style="margin-bottom:10px;">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
+          <span style="font-family:var(--font-mono);font-size:0.58rem;color:var(--text3);">WATER TABLE</span>
+          <span style="font-family:var(--font-display);font-weight:700;font-size:1.2rem;color:${color};">${s.readings.water_table_depth_m}m</span>
+        </div>
+        <div style="height:4px;background:var(--bg3);border-radius:2px;">
+          <div style="width:${depthToPercent(s.readings.water_table_depth_m)}%;height:100%;background:${color};border-radius:2px;"></div>
+        </div>
+      </div>
+      <div class="sensor-metrics">
+        <div class="sensor-metric"><div class="metric-label">pH</div><div class="metric-value ${s.readings.ph < 6.5 || s.readings.ph > 8.5 ? 'alert' : ''}">${s.readings.ph}</div></div>
+        <div class="sensor-metric"><div class="metric-label">TDS (ppm)</div><div class="metric-value ${s.readings.tds_ppm > 500 ? 'alert' : ''}">${s.readings.tds_ppm}</div></div>
+        <div class="sensor-metric"><div class="metric-label">Turbidity</div><div class="metric-value">${s.readings.turbidity_ntu} NTU</div></div>
+        <div class="sensor-metric"><div class="metric-label">Temp</div><div class="metric-value">${s.readings.temperature_c}°C</div></div>
+      </div>
+      <div style="margin-top:10px;display:flex;align-items:center;gap:8px;">
+        <div style="flex:1;height:3px;background:var(--bg3);border-radius:2px;">
+          <div style="width:${s.readings.battery_percent}%;height:100%;background:${s.readings.battery_percent > 30 ? '#39d98a' : '#ff4e4e'};border-radius:2px;"></div>
+        </div>
+        <span style="font-family:var(--font-mono);font-size:0.6rem;color:var(--text3);">🔋 ${s.readings.battery_percent}%</span>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+// ─── RECHARGE PAGE ────────────────────────────────────────────────────
+let rechargeMap = null;
+function initRechargePage() {
+  if (rechargeMap) { rechargeMap.remove(); }
+
+  rechargeMap = L.map('recharge-map', { center: [13.18, 77.62], zoom: 10 });
+  L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+    attribution: '© OpenStreetMap contributors © CARTO', maxZoom: 18
+  }).addTo(rechargeMap);
+
+  // Draw all zones
+  zonesData.forEach(zone => {
+    const color = statusColors[zone.status];
+    L.circleMarker([zone.lat, zone.lng], {
+      radius: 10, fillColor: color, color: color, fillOpacity: 0.25, weight: 1
+    }).addTo(rechargeMap).bindTooltip(zone.name);
+  });
+
+  // Recharge zones
+  const rechargeZones = [
+    { name:"Nandi Hills Watershed", type:"Natural Recharge", coords:[[13.35,77.65],[13.40,77.72],[13.38,77.70],[13.33,77.66]], color:'#00d4aa' },
+    { name:"Arkavathi River Basin", type:"River Recharge", coords:[[13.20,77.52],[13.28,77.58],[13.22,77.62],[13.15,77.56]], color:'#4a9eff' },
+    { name:"Yelahanka Lake Catchment", type:"Lake Recharge", coords:[[13.09,77.58],[13.12,77.62],[13.10,77.65],[13.07,77.61]], color:'#a855f7' }
+  ];
+
+  rechargeZones.forEach(rz => {
+    L.polygon(rz.coords, {
+      color: rz.color, fillColor: rz.color, fillOpacity: 0.12, weight: 2, dashArray: '6,4'
+    }).addTo(rechargeMap).bindPopup(`<b style="color:${rz.color}">${rz.name}</b><br/>${rz.type}`);
+  });
+
+  // Zone list
+  const list = document.getElementById('recharge-zone-list');
+  list.innerHTML = rechargeZones.map(rz => `
+    <div style="background:var(--bg2); border:1px solid var(--border); border-left:3px solid ${rz.color}; border-radius:8px; padding:12px; margin-bottom:10px;">
+      <div style="font-family:var(--font-display); font-weight:700; font-size:0.9rem; color:${rz.color}; margin-bottom:4px;">${rz.name}</div>
+      <div style="font-family:var(--font-mono); font-size:0.65rem; color:var(--text3);">${rz.type}</div>
+    </div>
+  `).join('');
+}
+
+// ─── AI PREDICTION ────────────────────────────────────────────────────
+async function runPrediction() {
+  const zoneVal = document.getElementById('predict-zone').value;
+  if (!zoneVal) { alert('Please select a zone.'); return; }
+
+  const [lat, lng] = zoneVal.split(',').map(Number);
+  const area = document.getElementById('predict-area').value || 300;
+  const type = document.getElementById('predict-type').value;
+  const rain = document.getElementById('predict-rain').value || 860;
+
+  // Find nearest zone from mock data
+  let nearest = MOCK_ZONES[0];
+  let minDist = Infinity;
+  MOCK_ZONES.forEach(z => {
+    const d = Math.sqrt(Math.pow(z.lat - lat, 2) + Math.pow(z.lng - lng, 2));
+    if (d < minDist) { minDist = d; nearest = z; }
+  });
+
+  const rec = AI_RECS[nearest.status];
+  const harvestPotential = (area * rain * 0.8 / 1000).toFixed(0);
+
+  const riskColors = { CRITICAL:'#ff4e4e', HIGH:'#f5a623', MEDIUM:'#ffb400', WATCH:'#4a9eff', GOOD:'#39d98a', EXCELLENT:'#00d4aa' };
+  const riskIcons = { CRITICAL:'🚨', HIGH:'⚠️', MEDIUM:'⚡', WATCH:'👁', GOOD:'✅', EXCELLENT:'🌟' };
+  const col = riskColors[rec.priority];
+
+  // Show result
+  const resultEl = document.getElementById('ai-result');
+  resultEl.classList.add('show');
+
+  document.getElementById('risk-banner').style.background = `rgba(${col === '#ff4e4e' ? '255,78,78' : col === '#f5a623' ? '245,166,35' : col === '#39d98a' ? '57,217,138' : '0,212,170'},0.1)`;
+  document.getElementById('risk-banner').style.border = `1px solid ${col}40`;
+  document.getElementById('risk-icon').textContent = riskIcons[rec.priority] || '📊';
+  document.getElementById('risk-title').textContent = `Risk Level: ${rec.priority} — ${nearest.name}`;
+  document.getElementById('risk-title').style.color = col;
+  document.getElementById('risk-sub').textContent = `Water depth: ${nearest.groundwaterLevel}m | GRACE: ${nearest.graceAnomaly} cm | Recovery: ${rec.estimatedRecoveryTime}`;
+
+  document.getElementById('ai-recs-content').innerHTML = `
+    <div style="background:rgba(0,212,170,0.07);border:1px solid rgba(0,212,170,0.2);border-radius:8px;padding:12px;margin-bottom:12px;">
+      <div style="font-family:var(--font-mono);font-size:0.65rem;color:var(--teal);letter-spacing:0.1em;margin-bottom:4px;">RAINWATER HARVEST POTENTIAL</div>
+      <div style="font-family:var(--font-display);font-weight:800;font-size:1.6rem;color:var(--teal);">${parseInt(harvestPotential).toLocaleString()} L/year</div>
+      <div style="font-size:0.72rem;color:var(--text3);margin-top:2px;">Based on ${area}sqm × ${rain}mm rainfall × 80% coefficient</div>
+    </div>
+    <div class="rec-section-title">⚡ Immediate Actions</div>
+    <ul class="recs-list">${rec.immediate.map(r => `<li>${r}</li>`).join('')}</ul>
+    <div class="rec-section-title">📅 Short-Term (3-6 months)</div>
+    <ul class="recs-list">${rec.shortTerm.map(r => `<li>${r}</li>`).join('')}</ul>
+    <div class="rec-section-title">🌱 Long-Term (1-3 years)</div>
+    <ul class="recs-list">${rec.longTerm.map(r => `<li>${r}</li>`).join('')}</ul>
+  `;
+
+  // Ranked solutions
+  const solutions = [
+    { solution:"Percolation Pond", roi:4, effectiveness:"High", cost:250000, icon:"🏊" },
+    { solution:"Rooftop RWH", roi:2, effectiveness:"Medium", cost:45000, icon:"🏠" },
+    { solution:"Recharge Shaft", roi:3, effectiveness:"Very High", cost:180000, icon:"⛏" },
+    { solution:"Check Dam", roi:7, effectiveness:"High", cost:850000, icon:"🏗" },
+    { solution:"Soak Pit Network", roi:2, effectiveness:"Medium", cost:35000, icon:"💧" }
+  ].sort((a,b) => a.roi - b.roi);
+
+  document.getElementById('solutions-panel').innerHTML = `
+    <div style="font-family:var(--font-mono);font-size:0.62rem;color:var(--text3);letter-spacing:0.1em;margin-bottom:12px;">RANKED BY ROI (LOWEST PAYBACK FIRST)</div>
+    <div class="solutions-grid">
+      ${solutions.map((s, i) => `
+      <div class="solution-card">
+        <div style="font-size:1.4rem;margin-bottom:6px;">${s.icon}</div>
+        <div class="solution-name">${s.solution}</div>
+        <div class="solution-meta">
+          Cost: ₹${(s.cost/1000).toFixed(0)}K<br/>
+          Effectiveness: ${s.effectiveness}<br/>
+          ROI: ${s.roi} years
+        </div>
+        <div class="solution-roi">₹${(s.cost/1000).toFixed(0)}K</div>
+        ${i === 0 ? '<div style="background:rgba(0,212,170,0.15);border:1px solid rgba(0,212,170,0.3);color:var(--teal);padding:3px 8px;border-radius:4px;font-family:var(--font-mono);font-size:0.58px;font-size:0.58rem;margin-top:8px;letter-spacing:0.06em;">BEST ROI</div>' : ''}
+      </div>`).join('')}
+    </div>`;
+}
+
+// ─── RAINFALL PAGE ────────────────────────────────────────────────────
+function initRainfallPage() {
+  const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  const rainfall2023 = [8.2, 12.1, 31.4, 48.7, 89.3, 124.6, 98.4, 87.2, 134.8, 112.3, 22.1, 6.4];
+
+  // Rainfall chart
+  const rc = document.getElementById('rainfall-chart').getContext('2d');
+  const barColors = rainfall2023.map(v => v > 80 ? '#00d4aa' : v > 40 ? '#4a9eff' : v > 20 ? '#f5a623' : '#ff4e4e');
+  new Chart(rc, {
+    type: 'bar',
+    data: {
+      labels: months,
+      datasets: [{ label: 'Rainfall (mm)', data: rainfall2023, backgroundColor: barColors, borderRadius: 4 }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: false }, tooltip: { backgroundColor: '#0f1f36', borderColor: '#1e3a5f', borderWidth: 1, titleColor: '#e2eaf4', bodyColor: '#8fa8c4' } },
+      scales: {
+        x: { grid: { color: '#1e3a5f' }, ticks: { color: '#4e6d8e', font: { family: 'Space Mono', size: 10 } } },
+        y: { grid: { color: '#1e3a5f' }, ticks: { color: '#4e6d8e', font: { family: 'Space Mono', size: 10 } } }
+      }
+    }
+  });
+
+  // Percolation chart
+  const pc = document.getElementById('percolation-chart').getContext('2d');
+  new Chart(pc, {
+    type: 'bar',
+    data: {
+      labels: ['Alluvial', 'Sandy Loam', 'Red Laterite', 'Clay'],
+      datasets: [{ label: 'mm/hour', data: [18.3, 12.5, 6.2, 1.8],
+        backgroundColor: ['#00d4aa','#4a9eff','#f5a623','#ff4e4e'],
+        borderRadius: 4
+      }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false, indexAxis: 'y',
+      plugins: { legend: { display: false }, tooltip: { backgroundColor: '#0f1f36', borderColor: '#1e3a5f', borderWidth: 1, titleColor: '#e2eaf4', bodyColor: '#8fa8c4' } },
+      scales: {
+        x: { grid: { color: '#1e3a5f' }, ticks: { color: '#4e6d8e', font: { family: 'Space Mono', size: 10 } } },
+        y: { grid: { display: false }, ticks: { color: '#e2eaf4', font: { family: 'Inter', size: 11 } } }
+      }
+    }
+  });
+
+  // Recharge potential
+  const rpc = document.getElementById('recharge-potential-chart').getContext('2d');
+  const potential = rainfall2023.map(v => (v * 0.35).toFixed(1));
+  const grad = rpc.createLinearGradient(0, 0, 0, 200);
+  grad.addColorStop(0, 'rgba(0,212,170,0.5)');
+  grad.addColorStop(1, 'rgba(0,212,170,0.02)');
+
+  new Chart(rpc, {
+    type: 'line',
+    data: {
+      labels: months,
+      datasets: [
+        { label: 'Rainfall (mm)', data: rainfall2023, borderColor: '#4a9eff', borderWidth: 1.5, pointRadius: 2, tension: 0.4, yAxisID: 'y1' },
+        { label: 'Recharge Potential (mm)', data: potential, borderColor: '#00d4aa', backgroundColor: grad, borderWidth: 2, pointRadius: 3, tension: 0.4, fill: true, yAxisID: 'y' }
+      ]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { labels: { color: '#8fa8c4', font: { family: 'Inter', size: 11 } } }, tooltip: { backgroundColor: '#0f1f36', borderColor: '#1e3a5f', borderWidth: 1, titleColor: '#e2eaf4', bodyColor: '#8fa8c4' } },
+      scales: {
+        x: { grid: { color: '#1e3a5f' }, ticks: { color: '#4e6d8e', font: { family: 'Space Mono', size: 10 } } },
+        y: { grid: { color: '#1e3a5f' }, ticks: { color: '#4e6d8e', font: { family: 'Space Mono', size: 10 } }, position: 'left' },
+        y1: { display: false, position: 'right' }
+      }
+    }
+  });
+}
+
+// ─── ZONE MODAL ───────────────────────────────────────────────────────
+function showZoneModal(zoneId) {
+  const zone = MOCK_ZONES.find(z => z.id === zoneId);
+  if (!zone) return;
+
+  const rec = AI_RECS[zone.status];
+  const col = statusColors[zone.status];
+
+  document.getElementById('modal-content').innerHTML = `
+    <div style="display:flex; align-items:center; gap:12px; margin-bottom:1.5rem;">
+      <div style="width:48px;height:48px;background:${col}22;border:2px solid ${col};border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:1.4rem;">📍</div>
+      <div>
+        <div style="font-family:var(--font-display);font-weight:800;font-size:1.3rem;">${zone.name}</div>
+        <div class="zone-status status-${zone.status}" style="display:inline-block;margin-top:4px;">${statusLabels[zone.status]}</div>
+      </div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:1.2rem;">
+      <div class="grace-stat"><div class="grace-stat-label">Water Table Depth</div><div class="grace-stat-value" style="color:${col};">${zone.groundwaterLevel}m</div></div>
+      <div class="grace-stat"><div class="grace-stat-label">GRACE Anomaly</div><div class="grace-stat-value" style="color:${zone.graceAnomaly<0?'#ff4e4e':'#39d98a'};">${zone.graceAnomaly>0?'+':''}${zone.graceAnomaly} cm</div></div>
+      <div class="grace-stat"><div class="grace-stat-label">Recharge Rate</div><div class="grace-stat-value" style="color:var(--blue);">${zone.rechargeRate} mm/d</div></div>
+      <div class="grace-stat"><div class="grace-stat-label">Borewells</div><div class="grace-stat-value" style="color:var(--amber);">${zone.borewellCount.toLocaleString()}</div></div>
+    </div>
+    <div style="background:rgba(${col==='#ff4e4e'?'255,78,78':col==='#f5a623'?'245,166,35':'0,212,170'},0.08);border:1px solid ${col}33;border-radius:8px;padding:12px;margin-bottom:12px;">
+      <div style="font-family:var(--font-mono);font-size:0.6rem;letter-spacing:0.1em;color:var(--text3);margin-bottom:4px;">AI ASSESSMENT</div>
+      <div style="font-family:var(--font-display);font-weight:700;color:${col};">${rec.priority} Priority — ${rec.estimatedRecoveryTime}</div>
+    </div>
+    <div class="rec-section-title">⚡ Immediate Actions</div>
+    <ul class="recs-list">${rec.immediate.map(r=>`<li>${r}</li>`).join('')}</ul>
+    <div class="rec-section-title">📅 Short-Term</div>
+    <ul class="recs-list">${rec.shortTerm.map(r=>`<li>${r}</li>`).join('')}</ul>
+  `;
+
+  document.getElementById('zone-modal').classList.add('open');
+}
+
+function closeModal() { document.getElementById('zone-modal').classList.remove('open'); }
+document.getElementById('zone-modal').addEventListener('click', e => { if(e.target===document.getElementById('zone-modal')) closeModal(); });
+
+// ─── INIT ─────────────────────────────────────────────────────────────
+document.addEventListener('DOMContentLoaded', () => {
+  initDashboard();
+  // Auto-refresh every 60 seconds
+  setInterval(() => {
+    if (currentTab === 'dashboard') initDashboard();
+    if (currentTab === 'iot') { tabInit['iot'] = false; loadIoTSensors(); }
+  }, 60000);
+});
+</script>
+
+</body>
+</html>
