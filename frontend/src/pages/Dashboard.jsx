@@ -15,8 +15,21 @@ export default function Dashboard() {
     (async () => {
       // Fetch summary
       const s = await apiFetch('/api/summary');
-      if (s?.success) setSummary(s.data);
-      else setSummary({ critical_zones: 7, average_water_table_depth_m: '15.6', total_borewells_monitored: 9383, overall_grace_anomaly_cm: -8.6, iot_sensors_online: 11, total_zones_monitored: 12 });
+      const b = await apiFetch('/api/borewells');
+      if (s?.success) {
+        const finalSummary = { ...s.data };
+        if (b?.success) finalSummary.total_borewells_monitored = b.count;
+        setSummary(finalSummary);
+      } else {
+        setSummary({ 
+          critical_zones: 7, 
+          average_water_table_depth_m: '15.6', 
+          total_borewells_monitored: b?.success ? b.count : 7438, 
+          overall_grace_anomaly_cm: -8.6, 
+          iot_sensors_online: 11, 
+          total_zones_monitored: 12 
+        });
+      }
 
       // Fetch zones from backend (live data with real-time simulation)
       const z = await apiFetch('/api/zones');

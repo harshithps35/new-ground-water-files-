@@ -1,17 +1,19 @@
 import { useState, useEffect } from 'react';
-import { LayoutDashboard, Satellite, Radio, TreePine, Brain, CloudRain, LogOut, Droplets, Bell, ChevronLeft, ChevronRight } from 'lucide-react';
+import { LayoutDashboard, Satellite, Radio, TreePine, Brain, CloudRain, LogOut, Droplets, Bell, ChevronLeft, ChevronRight, Map as MapIcon } from 'lucide-react';
 import Dashboard from './pages/Dashboard';
 import GraceSatellite from './pages/GraceSatellite';
 import IoTSensors from './pages/IoTSensors';
 import RechargeZones from './pages/RechargeZones';
 import AiPredict from './pages/AiPredict';
 import Rainfall from './pages/Rainfall';
+import BorewellInventory from './pages/BorewellInventory';
 import Login from './pages/Login';
 import './App.css';
 
 const NAV_ITEMS = [
   { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { id: 'satellite', label: 'GRACE Satellite', icon: Satellite },
+  { id: 'borewells', label: 'Borewell Inventory', icon: MapIcon },
   { id: 'iot', label: 'IoT Sensors', icon: Radio },
   { id: 'recharge', label: 'Recharge Zones', icon: TreePine },
   { id: 'predict', label: 'AI Predict', icon: Brain },
@@ -51,6 +53,7 @@ export default function App() {
   const renderPage = () => {
     switch (page) {
       case 'satellite': return <GraceSatellite />;
+      case 'borewells': return <BorewellInventory />;
       case 'iot': return <IoTSensors />;
       case 'recharge': return <RechargeZones />;
       case 'predict': return <AiPredict />;

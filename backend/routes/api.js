@@ -142,6 +142,31 @@ router.get('/rainfall', (req, res) => {
   });
 });
 
+// GET /api/borewells - Borewell inventory data with zone filtering
+router.get('/borewells', (req, res) => {
+  try {
+    const borewells = require('../data/borewells.json');
+    const { zone } = req.query;
+
+    // Zone distribution
+    const zoneCounts = {};
+    borewells.forEach(b => { zoneCounts[b.zone] = (zoneCounts[b.zone] || 0) + 1; });
+    const zones = Object.entries(zoneCounts).map(([name, count]) => ({ name, count })).sort((a, b) => b.count - a.count);
+
+    const filtered = zone && zone !== 'all' ? borewells.filter(b => b.zone === zone) : borewells;
+
+    res.json({
+      success: true,
+      count: filtered.length,
+      total: borewells.length,
+      zones,
+      data: filtered
+    });
+  } catch (err) {
+    res.status(500).json({ success: false, message: 'Failed to load borewell data' });
+  }
+});
+
 // GET /api/recharge-zones - Identified recharge areas
 router.get('/recharge-zones', (req, res) => {
   res.json({
