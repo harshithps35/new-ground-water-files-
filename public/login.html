@@ -1,0 +1,745 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>AquaTrace — Groundwater Intelligence Portal</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&family=Source+Sans+3:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  :root {
+    --navy: #0c2340;
+    --navy-deep: #071a30;
+    --navy-light: #163a5f;
+    --white: #ffffff;
+    --off-white: #f4f7fa;
+    --gray-50: #f8f9fb;
+    --gray-100: #eef1f5;
+    --gray-200: #dce1e8;
+    --gray-300: #b8c1cc;
+    --gray-400: #8c95a4;
+    --gray-500: #64707d;
+    --gray-700: #374151;
+    --gray-900: #1a1f2b;
+    --saffron: #f97316;
+    --saffron-light: #fb923c;
+    --green-gov: #15803d;
+    --green-light: #22c55e;
+    --blue-link: #2563eb;
+    --blue-light: #3b82f6;
+    --red-err: #dc2626;
+    --shadow-sm: 0 1px 3px rgba(0,0,0,0.08);
+    --shadow-md: 0 4px 16px rgba(0,0,0,0.1);
+    --shadow-lg: 0 12px 40px rgba(0,0,0,0.12);
+  }
+
+  body {
+    font-family: 'Source Sans 3', 'Segoe UI', sans-serif;
+    min-height: 100vh;
+    background: var(--off-white);
+    color: var(--gray-900);
+    display: flex;
+  }
+
+  /* ========== LEFT PANEL — Branding ========== */
+  .brand-panel {
+    width: 46%;
+    min-height: 100vh;
+    background: linear-gradient(160deg, var(--navy-deep) 0%, var(--navy) 40%, var(--navy-light) 100%);
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    padding: 3rem 3.5rem;
+    position: relative;
+    overflow: hidden;
+    color: var(--white);
+  }
+
+  /* Subtle pattern overlay */
+  .brand-panel::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background-image: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.03'%3E%3Ccircle cx='30' cy='30' r='1.5'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
+    pointer-events: none;
+  }
+
+  /* Decorative water ripple circles */
+  .ripple-circle {
+    position: absolute;
+    border-radius: 50%;
+    border: 1px solid rgba(255,255,255,0.06);
+    pointer-events: none;
+  }
+  .ripple-1 { width: 500px; height: 500px; bottom: -180px; left: -100px; }
+  .ripple-2 { width: 400px; height: 400px; bottom: -140px; left: -50px; }
+  .ripple-3 { width: 300px; height: 300px; top: -80px; right: -60px; }
+
+  .brand-content {
+    position: relative;
+    z-index: 2;
+    text-align: center;
+    max-width: 400px;
+  }
+
+  /* Emblem / Logo */
+  .emblem {
+    width: 90px;
+    height: 90px;
+    margin: 0 auto 1.5rem;
+    background: rgba(255,255,255,0.1);
+    border: 2px solid rgba(255,255,255,0.2);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 2.6rem;
+    backdrop-filter: blur(4px);
+  }
+
+  .brand-title {
+    font-family: 'Poppins', sans-serif;
+    font-weight: 800;
+    font-size: 2rem;
+    letter-spacing: -0.02em;
+    line-height: 1.2;
+    margin-bottom: 0.5rem;
+  }
+
+  .brand-title span { color: var(--saffron-light); }
+
+  .brand-dept {
+    font-size: 0.82rem;
+    font-weight: 400;
+    color: rgba(255,255,255,0.65);
+    line-height: 1.6;
+    margin-bottom: 2rem;
+    letter-spacing: 0.01em;
+  }
+
+  /* Tri-color bar (Indian flag inspired) */
+  .tricolor-bar {
+    display: flex;
+    width: 100%;
+    height: 4px;
+    border-radius: 2px;
+    overflow: hidden;
+    margin-bottom: 2rem;
+  }
+  .tricolor-bar .seg-saffron { flex: 1; background: #ff9933; }
+  .tricolor-bar .seg-white   { flex: 1; background: #ffffff; }
+  .tricolor-bar .seg-green   { flex: 1; background: #138808; }
+
+  /* Info cards on left */
+  .info-cards {
+    display: flex;
+    flex-direction: column;
+    gap: 0.8rem;
+    width: 100%;
+  }
+
+  .info-card {
+    background: rgba(255,255,255,0.07);
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 10px;
+    padding: 0.9rem 1.1rem;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    backdrop-filter: blur(4px);
+    transition: background 0.2s;
+  }
+
+  .info-card:hover { background: rgba(255,255,255,0.1); }
+
+  .info-card-icon {
+    width: 38px;
+    height: 38px;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.1rem;
+    flex-shrink: 0;
+  }
+
+  .info-card-icon.ic-blue   { background: rgba(59,130,246,0.2); }
+  .info-card-icon.ic-green  { background: rgba(34,197,94,0.2); }
+  .info-card-icon.ic-amber  { background: rgba(251,146,60,0.2); }
+
+  .info-card-text h4 {
+    font-family: 'Poppins', sans-serif;
+    font-size: 0.82rem;
+    font-weight: 600;
+    margin-bottom: 2px;
+  }
+
+  .info-card-text p {
+    font-size: 0.72rem;
+    color: rgba(255,255,255,0.55);
+    line-height: 1.4;
+  }
+
+  .brand-footer {
+    position: absolute;
+    bottom: 1.5rem;
+    left: 0; right: 0;
+    text-align: center;
+    font-size: 0.68rem;
+    color: rgba(255,255,255,0.35);
+    z-index: 2;
+  }
+
+  /* ========== RIGHT PANEL — Auth Form ========== */
+  .form-panel {
+    flex: 1;
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 2rem;
+    background: var(--white);
+  }
+
+  .form-container {
+    width: 100%;
+    max-width: 420px;
+  }
+
+  .form-header {
+    margin-bottom: 1.8rem;
+  }
+
+  .form-header h2 {
+    font-family: 'Poppins', sans-serif;
+    font-size: 1.6rem;
+    font-weight: 700;
+    color: var(--navy);
+    margin-bottom: 0.4rem;
+  }
+
+  .form-header p {
+    font-size: 0.88rem;
+    color: var(--gray-500);
+    line-height: 1.5;
+  }
+
+  /* Tabs */
+  .auth-tabs {
+    display: flex;
+    border: 1px solid var(--gray-200);
+    border-radius: 10px;
+    overflow: hidden;
+    margin-bottom: 1.6rem;
+    background: var(--gray-50);
+  }
+
+  .auth-tab {
+    flex: 1;
+    padding: 11px 0;
+    text-align: center;
+    font-family: 'Poppins', sans-serif;
+    font-size: 0.82rem;
+    font-weight: 600;
+    color: var(--gray-400);
+    cursor: pointer;
+    border: 2px solid transparent;
+    border-radius: 8px;
+    transition: all 0.25s;
+    background: transparent;
+    margin: 3px;
+  }
+
+  .auth-tab:hover { color: var(--gray-700); }
+
+  .auth-tab.active {
+    background: var(--white);
+    color: var(--navy);
+    border-color: var(--gray-200);
+    box-shadow: var(--shadow-sm);
+  }
+
+  /* Message */
+  .msg-box {
+    padding: 10px 14px;
+    border-radius: 8px;
+    font-size: 0.8rem;
+    display: none;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 1rem;
+    line-height: 1.4;
+  }
+  .msg-box.show { display: flex; }
+  .msg-box.error   { background: #fef2f2; border: 1px solid #fecaca; color: var(--red-err); }
+  .msg-box.success { background: #f0fdf4; border: 1px solid #bbf7d0; color: var(--green-gov); }
+
+  /* Input method chips */
+  .input-chips {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 1rem;
+  }
+
+  .chip {
+    font-family: 'Source Sans 3', sans-serif;
+    font-size: 0.78rem;
+    font-weight: 500;
+    padding: 6px 16px;
+    border-radius: 20px;
+    cursor: pointer;
+    border: 1px solid var(--gray-200);
+    background: var(--white);
+    color: var(--gray-500);
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+  }
+
+  .chip:hover { border-color: var(--gray-300); }
+
+  .chip.active {
+    background: var(--navy);
+    border-color: var(--navy);
+    color: var(--white);
+  }
+
+  /* Form fields */
+  .auth-form {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+  }
+
+  .fgroup {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+  }
+
+  .fgroup label {
+    font-size: 0.78rem;
+    font-weight: 600;
+    color: var(--gray-700);
+  }
+
+  .fgroup label .required { color: var(--red-err); margin-left: 2px; }
+
+  .finput-wrap {
+    position: relative;
+    display: flex;
+    align-items: center;
+  }
+
+  .finput {
+    width: 100%;
+    padding: 11px 14px 11px 42px;
+    border: 1.5px solid var(--gray-200);
+    border-radius: 8px;
+    font-family: 'Source Sans 3', sans-serif;
+    font-size: 0.9rem;
+    color: var(--gray-900);
+    background: var(--white);
+    outline: none;
+    transition: border-color 0.2s, box-shadow 0.2s;
+  }
+
+  .finput:focus {
+    border-color: var(--blue-link);
+    box-shadow: 0 0 0 3px rgba(37,99,235,0.1);
+  }
+
+  .finput::placeholder { color: var(--gray-300); }
+
+  .finput-icon {
+    position: absolute;
+    left: 13px;
+    color: var(--gray-400);
+    font-size: 1.05rem;
+    pointer-events: none;
+    transition: color 0.2s;
+  }
+
+  .finput:focus ~ .finput-icon { color: var(--blue-link); }
+
+  .pwd-toggle {
+    position: absolute;
+    right: 12px;
+    background: none;
+    border: none;
+    color: var(--gray-400);
+    cursor: pointer;
+    font-size: 1rem;
+    padding: 4px;
+    border-radius: 4px;
+    transition: color 0.2s;
+  }
+  .pwd-toggle:hover { color: var(--gray-700); }
+
+  /* Register-only */
+  .reg-only {
+    display: none;
+    opacity: 0;
+    max-height: 0;
+    overflow: hidden;
+    transition: all 0.3s ease;
+  }
+  .reg-only.show {
+    display: flex;
+    opacity: 1;
+    max-height: 120px;
+  }
+
+  /* Submit */
+  .submit-btn {
+    width: 100%;
+    padding: 13px;
+    border: none;
+    border-radius: 8px;
+    background: var(--navy);
+    color: var(--white);
+    font-family: 'Poppins', sans-serif;
+    font-weight: 600;
+    font-size: 0.92rem;
+    cursor: pointer;
+    margin-top: 0.4rem;
+    transition: background 0.2s, transform 0.15s, box-shadow 0.2s;
+    position: relative;
+  }
+
+  .submit-btn:hover {
+    background: var(--navy-light);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 16px rgba(12,35,64,0.25);
+  }
+
+  .submit-btn:active { transform: translateY(0); }
+  .submit-btn:disabled { opacity: 0.6; cursor: not-allowed; transform: none !important; box-shadow: none !important; }
+
+  .submit-btn .spin {
+    display: none;
+    width: 18px; height: 18px;
+    border: 2.5px solid rgba(255,255,255,0.3);
+    border-top-color: var(--white);
+    border-radius: 50%;
+    animation: spin 0.6s linear infinite;
+    margin: 0 auto;
+  }
+  .submit-btn.loading .btn-label { display: none; }
+  .submit-btn.loading .spin { display: inline-block; }
+
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* Separator */
+  .sep {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin: 0.3rem 0;
+  }
+  .sep::before, .sep::after { content: ''; flex: 1; height: 1px; background: var(--gray-200); }
+  .sep span { font-size: 0.72rem; color: var(--gray-400); font-weight: 500; }
+
+  /* Footer */
+  .form-footer {
+    text-align: center;
+    margin-top: 1.4rem;
+    font-size: 0.82rem;
+    color: var(--gray-500);
+  }
+  .form-footer a {
+    color: var(--blue-link);
+    text-decoration: none;
+    font-weight: 600;
+    transition: color 0.2s;
+  }
+  .form-footer a:hover { color: var(--navy); text-decoration: underline; }
+
+  /* Govt. notice bar */
+  .gov-notice {
+    margin-top: 2rem;
+    padding: 10px 14px;
+    background: var(--gray-50);
+    border: 1px solid var(--gray-200);
+    border-radius: 8px;
+    font-size: 0.7rem;
+    color: var(--gray-500);
+    line-height: 1.5;
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+  }
+  .gov-notice .notice-icon { font-size: 1rem; flex-shrink: 0; margin-top: 1px; }
+
+  /* ========== RESPONSIVE ========== */
+  @media (max-width: 900px) {
+    body { flex-direction: column; }
+    .brand-panel {
+      width: 100%;
+      min-height: auto;
+      padding: 2rem 1.5rem;
+    }
+    .info-cards { display: none; }
+    .brand-footer { position: static; margin-top: 1rem; }
+    .form-panel { padding: 1.5rem; }
+  }
+</style>
+</head>
+<body>
+
+  <!-- ===== LEFT PANEL ===== -->
+  <div class="brand-panel">
+    <div class="ripple-circle ripple-1"></div>
+    <div class="ripple-circle ripple-2"></div>
+    <div class="ripple-circle ripple-3"></div>
+
+    <div class="brand-content">
+      <div class="emblem">💧</div>
+      <h1 class="brand-title">Aqua<span>Trace</span></h1>
+      <p class="brand-dept">
+        Smart Groundwater Monitoring &amp; Management System<br />
+        North Bangalore Division — Karnataka
+      </p>
+
+      <div class="tricolor-bar">
+        <div class="seg-saffron"></div>
+        <div class="seg-white"></div>
+        <div class="seg-green"></div>
+      </div>
+
+      <div class="info-cards">
+        <div class="info-card">
+          <div class="info-card-icon ic-blue">🛰️</div>
+          <div class="info-card-text">
+            <h4>GRACE Satellite Data</h4>
+            <p>NASA JPL water storage anomaly monitoring</p>
+          </div>
+        </div>
+        <div class="info-card">
+          <div class="info-card-icon ic-green">📡</div>
+          <div class="info-card-text">
+            <h4>12 IoT Sensor Zones</h4>
+            <p>Real-time borewell depth, pH, TDS readings</p>
+          </div>
+        </div>
+        <div class="info-card">
+          <div class="info-card-icon ic-amber">🤖</div>
+          <div class="info-card-text">
+            <h4>AI Prediction Engine</h4>
+            <p>Risk assessment &amp; recharge recommendations</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="brand-footer">
+      © 2026 AquaTrace &middot; Department of Mines &amp; Geology, Karnataka
+    </div>
+  </div>
+
+  <!-- ===== RIGHT PANEL ===== -->
+  <div class="form-panel">
+    <div class="form-container">
+      <div class="form-header" id="formHeader">
+        <h2 id="formTitle">Welcome Back</h2>
+        <p id="formDesc">Sign in to access the Groundwater Intelligence Dashboard</p>
+      </div>
+
+      <!-- Tabs -->
+      <div class="auth-tabs">
+        <button class="auth-tab active" id="tabLogin" onclick="switchMode('login')">Sign In</button>
+        <button class="auth-tab" id="tabRegister" onclick="switchMode('register')">Create Account</button>
+      </div>
+
+      <!-- Message -->
+      <div class="msg-box" id="msgBox">
+        <span id="msgIcon"></span>
+        <span id="msgText"></span>
+      </div>
+
+      <!-- Form -->
+      <form class="auth-form" id="authForm" onsubmit="handleSubmit(event)" novalidate>
+
+        <!-- Full Name (Register only) -->
+        <div class="fgroup reg-only" id="nameGroup">
+          <label for="nameInput">Full Name <span class="required">*</span></label>
+          <div class="finput-wrap">
+            <input class="finput" id="nameInput" type="text" placeholder="e.g. Rajesh Kumar" autocomplete="name" />
+            <span class="finput-icon">👤</span>
+          </div>
+        </div>
+
+        <!-- Email / Phone chooser -->
+        <div class="input-chips">
+          <button type="button" class="chip active" id="chipEmail" onclick="setMethod('email')">📧 Email</button>
+          <button type="button" class="chip" id="chipPhone" onclick="setMethod('phone')">📱 Phone No.</button>
+        </div>
+
+        <!-- Email -->
+        <div class="fgroup" id="emailGroup">
+          <label for="emailInput">Email Address <span class="required">*</span></label>
+          <div class="finput-wrap">
+            <input class="finput" id="emailInput" type="email" placeholder="you@example.com" autocomplete="email" />
+            <span class="finput-icon">✉️</span>
+          </div>
+        </div>
+
+        <!-- Phone -->
+        <div class="fgroup" id="phoneGroup" style="display:none;">
+          <label for="phoneInput">Phone Number <span class="required">*</span></label>
+          <div class="finput-wrap">
+            <input class="finput" id="phoneInput" type="tel" placeholder="+91 98765 43210" autocomplete="tel" />
+            <span class="finput-icon">📱</span>
+          </div>
+        </div>
+
+        <!-- Password -->
+        <div class="fgroup">
+          <label for="pwdInput">Password <span class="required">*</span></label>
+          <div class="finput-wrap">
+            <input class="finput" id="pwdInput" type="password" placeholder="Min. 6 characters" autocomplete="current-password" />
+            <span class="finput-icon">🔒</span>
+            <button type="button" class="pwd-toggle" onclick="togglePwd('pwdInput',this)">👁️</button>
+          </div>
+        </div>
+
+        <!-- Confirm Password (Register only) -->
+        <div class="fgroup reg-only" id="confirmGroup">
+          <label for="confirmInput">Confirm Password <span class="required">*</span></label>
+          <div class="finput-wrap">
+            <input class="finput" id="confirmInput" type="password" placeholder="Re-enter password" autocomplete="new-password" />
+            <span class="finput-icon">🔒</span>
+            <button type="button" class="pwd-toggle" onclick="togglePwd('confirmInput',this)">👁️</button>
+          </div>
+        </div>
+
+        <button class="submit-btn" type="submit" id="submitBtn">
+          <span class="btn-label" id="btnLabel">Sign In</span>
+          <span class="spin"></span>
+        </button>
+      </form>
+
+      <!-- Footer link -->
+      <div class="form-footer" id="formFooter">
+        Don't have an account? <a href="#" onclick="switchMode('register'); return false;">Create one</a>
+      </div>
+
+      <!-- Govt notice -->
+      <div class="gov-notice">
+        <span class="notice-icon">🔐</span>
+        <span>This is a secure government portal. Unauthorized access is prohibited. All activities are monitored and logged. By signing in, you agree to the terms of use.</span>
+      </div>
+    </div>
+  </div>
+
+<script>
+  let mode = 'login';
+  let method = 'email';
+
+  function switchMode(m) {
+    mode = m;
+    hideMsg();
+    const regFields = document.querySelectorAll('.reg-only');
+    if (m === 'register') {
+      document.getElementById('tabLogin').classList.remove('active');
+      document.getElementById('tabRegister').classList.add('active');
+      regFields.forEach(f => f.classList.add('show'));
+      document.getElementById('formTitle').textContent = 'Create Account';
+      document.getElementById('formDesc').textContent = 'Register to access the Groundwater Intelligence Dashboard';
+      document.getElementById('btnLabel').textContent = 'Create Account';
+      document.getElementById('formFooter').innerHTML = 'Already registered? <a href="#" onclick="switchMode(\'login\'); return false;">Sign In</a>';
+    } else {
+      document.getElementById('tabLogin').classList.add('active');
+      document.getElementById('tabRegister').classList.remove('active');
+      regFields.forEach(f => f.classList.remove('show'));
+      document.getElementById('formTitle').textContent = 'Welcome Back';
+      document.getElementById('formDesc').textContent = 'Sign in to access the Groundwater Intelligence Dashboard';
+      document.getElementById('btnLabel').textContent = 'Sign In';
+      document.getElementById('formFooter').innerHTML = 'Don\'t have an account? <a href="#" onclick="switchMode(\'register\'); return false;">Create one</a>';
+    }
+  }
+
+  function setMethod(m) {
+    method = m;
+    document.getElementById('chipEmail').classList.toggle('active', m === 'email');
+    document.getElementById('chipPhone').classList.toggle('active', m === 'phone');
+    document.getElementById('emailGroup').style.display = m === 'email' ? '' : 'none';
+    document.getElementById('phoneGroup').style.display = m === 'phone' ? '' : 'none';
+  }
+
+  function togglePwd(id, btn) {
+    const inp = document.getElementById(id);
+    if (inp.type === 'password') { inp.type = 'text'; btn.textContent = '🙈'; }
+    else { inp.type = 'password'; btn.textContent = '👁️'; }
+  }
+
+  function showMsg(text, type) {
+    const box = document.getElementById('msgBox');
+    box.className = 'msg-box show ' + type;
+    document.getElementById('msgIcon').textContent = type === 'error' ? '⚠️' : '✅';
+    document.getElementById('msgText').textContent = text;
+  }
+
+  function hideMsg() { document.getElementById('msgBox').classList.remove('show'); }
+
+  async function handleSubmit(e) {
+    e.preventDefault();
+    hideMsg();
+
+    const id = method === 'email'
+      ? document.getElementById('emailInput').value.trim()
+      : document.getElementById('phoneInput').value.trim();
+    const pwd = document.getElementById('pwdInput').value;
+
+    if (!id) { showMsg(method === 'email' ? 'Please enter your email address.' : 'Please enter your phone number.', 'error'); return; }
+    if (!pwd || pwd.length < 6) { showMsg('Password must be at least 6 characters.', 'error'); return; }
+
+    const body = { password: pwd };
+    body[method] = id;
+
+    if (mode === 'register') {
+      const name = document.getElementById('nameInput').value.trim();
+      const conf = document.getElementById('confirmInput').value;
+      if (!name) { showMsg('Please enter your full name.', 'error'); return; }
+      if (pwd !== conf) { showMsg('Passwords do not match.', 'error'); return; }
+      body.name = name;
+    }
+
+    const btn = document.getElementById('submitBtn');
+    btn.classList.add('loading');
+    btn.disabled = true;
+
+    try {
+      const res = await fetch(mode === 'login' ? '/api/auth/login' : '/api/auth/register', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body)
+      });
+      const data = await res.json();
+
+      if (data.success) {
+        showMsg(data.message, 'success');
+        if (mode === 'login') {
+          localStorage.setItem('aquatrace_user', JSON.stringify(data.user));
+          setTimeout(() => { window.location.href = '/'; }, 1000);
+        } else {
+          setTimeout(() => switchMode('login'), 1500);
+        }
+      } else {
+        showMsg(data.message || 'Something went wrong.', 'error');
+      }
+    } catch {
+      showMsg('Server unavailable. Please try again later.', 'error');
+    }
+
+    btn.classList.remove('loading');
+    btn.disabled = false;
+  }
+</script>
+</body>
+</html>

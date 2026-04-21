@@ -1,0 +1,20 @@
+[
+  {
+    "id": "0008d030-bb2c-4919-80f2-f4fe4967f2d5",
+    "name": "Test User",
+    "email": "test@aquatrace.com",
+    "phone": null,
+    "passwordHash": "9ddc18323b32eb784f4f88a21f4032f74635c9c9d64428b19180062dcd194f0bce1d8c4ed5b939b21750800e39061aa6b0e848afdaba935f544b8742c43f1641",
+    "salt": "97b5f646e2e0e338904f319b37611183",
+    "createdAt": "2026-04-21T06:15:52.474Z"
+  },
+  {
+    "id": "cdaa2e79-3abb-461b-b25a-3c2caa3cefc4",
+    "name": "Harshith PS",
+    "email": "harshith@aquatrace.com",
+    "phone": null,
+    "passwordHash": "55a853d83a2aaa3fb72ef77235c7bf9b89f45742395e7805bc831ab89d2f3ce78c3d9a0f6c660299178813821aa488c48ef5da8e68e5995c8a6258f72f4891b5",
+    "salt": "f936c7d3dfb9adb38f7c37fdff10653c",
+    "createdAt": "2026-04-21T06:39:23.398Z"
+  }
+]

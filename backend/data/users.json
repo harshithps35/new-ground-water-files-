@@ -1,0 +1,11 @@
+[
+  {
+    "id": "6aca1eb6-72dc-41a6-a685-0c778e5b37d2",
+    "name": "RADHIKA",
+    "email": "test@aquasense.com",
+    "phone": null,
+    "passwordHash": "acf61d1a0d33153417107cab5c67b60737243a6de791c424b14be464c46c54e3356cc52b8ab269c8ab03e148508e4da8bb05f1cca1fb0c31e5507d2bfc488bdc",
+    "salt": "f3b9b90a2537ec2625a02dcebf884800",
+    "createdAt": "2026-04-21T07:55:36.682Z"
+  }
+]

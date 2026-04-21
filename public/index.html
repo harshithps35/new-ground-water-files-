@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>AquaTrace — North Bangalore Groundwater Intelligence</title>
+<title>AquaTrace — Groundwater Intelligence Portal</title>
 
 <!-- Leaflet Maps -->
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
@@ -15,36 +15,40 @@
 <!-- Google Fonts -->
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@400;600;700;800&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet" />
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&family=Source+Sans+3:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
 
 <style>
   :root {
-    --bg: #060c14;
-    --bg2: #0a1628;
-    --bg3: #0f1f36;
-    --surface: #112240;
-    --surface2: #172d4d;
-    --border: #1e3a5f;
-    --border2: #2a4f7a;
+    --bg: #f4f7fa;
+    --bg2: #ffffff;
+    --bg3: #eef1f5;
+    --surface: #ffffff;
+    --surface2: #f8f9fb;
+    --border: #dce1e8;
+    --border2: #b8c1cc;
 
-    --teal: #00d4aa;
-    --teal-dim: #00a07e;
-    --teal-glow: rgba(0,212,170,0.15);
-    --amber: #f5a623;
-    --amber-dim: #c07c10;
-    --red: #ff4e4e;
-    --red-dim: #c03030;
-    --blue: #4a9eff;
-    --green: #39d98a;
-    --purple: #a855f7;
+    --teal: #0c2340;
+    --teal-dim: #163a5f;
+    --teal-glow: rgba(12,35,64,0.08);
+    --amber: #f97316;
+    --amber-dim: #ea580c;
+    --red: #dc2626;
+    --red-dim: #b91c1c;
+    --blue: #2563eb;
+    --green: #15803d;
+    --purple: #7c3aed;
 
-    --text: #e2eaf4;
-    --text2: #8fa8c4;
-    --text3: #4e6d8e;
+    --text: #1a1f2b;
+    --text2: #4b5563;
+    --text3: #9ca3af;
 
-    --font-display: 'Syne', sans-serif;
-    --font-mono: 'Space Mono', monospace;
-    --font-body: 'Inter', sans-serif;
+    --font-display: 'Poppins', sans-serif;
+    --font-mono: 'Source Sans 3', monospace;
+    --font-body: 'Source Sans 3', sans-serif;
+
+    --navy: #0c2340;
+    --navy-light: #163a5f;
+    --saffron: #f97316;
   }
 
   * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -57,30 +61,19 @@
     overflow-x: hidden;
   }
 
-  /* ─── Noise overlay ─── */
-  body::before {
-    content: '';
-    position: fixed;
-    inset: 0;
-    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.04'/%3E%3C/svg%3E");
-    pointer-events: none;
-    z-index: 9999;
-    opacity: 0.4;
-  }
-
   /* ─── HEADER ─── */
   header {
     position: sticky;
     top: 0;
     z-index: 100;
-    background: rgba(6, 12, 20, 0.92);
-    backdrop-filter: blur(16px);
-    border-bottom: 1px solid var(--border);
+    background: var(--navy);
+    border-bottom: 3px solid var(--saffron);
     padding: 0 2rem;
     height: 64px;
     display: flex;
     align-items: center;
     justify-content: space-between;
+    color: #fff;
   }
 
   .logo {
@@ -92,7 +85,7 @@
   .logo-icon {
     width: 36px;
     height: 36px;
-    background: linear-gradient(135deg, var(--teal), var(--blue));
+    background: linear-gradient(135deg, #2563eb, #0c2340);
     border-radius: 8px;
     display: flex;
     align-items: center;
@@ -105,10 +98,10 @@
     font-weight: 800;
     font-size: 1.3rem;
     letter-spacing: -0.02em;
-    color: var(--text);
+    color: #ffffff;
   }
 
-  .logo-text span { color: var(--teal); }
+  .logo-text span { color: var(--saffron); }
 
   .logo-subtitle {
     font-family: var(--font-mono);
@@ -182,17 +175,18 @@
     padding: 0 2rem;
     display: flex;
     gap: 0;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.06);
   }
 
   .nav-tab {
-    font-family: var(--font-mono);
-    font-size: 0.72rem;
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
+    font-family: var(--font-display);
+    font-size: 0.78rem;
+    font-weight: 600;
+    letter-spacing: 0.02em;
     padding: 12px 20px;
     cursor: pointer;
     color: var(--text3);
-    border-bottom: 2px solid transparent;
+    border-bottom: 3px solid transparent;
     transition: all 0.2s;
     white-space: nowrap;
     user-select: none;
@@ -201,8 +195,9 @@
   .nav-tab:hover { color: var(--text2); }
 
   .nav-tab.active {
-    color: var(--teal);
-    border-bottom-color: var(--teal);
+    color: var(--navy);
+    border-bottom-color: var(--saffron);
+    background: var(--surface2);
   }
 
   /* ─── MAIN LAYOUT ─── */
@@ -264,9 +259,9 @@
     color: var(--text);
   }
 
-  .stat-value.danger { color: var(--red); }
-  .stat-value.warning { color: var(--amber); }
-  .stat-value.good { color: var(--green); }
+  .stat-value.danger { color: #dc2626; }
+  .stat-value.warning { color: #ea580c; }
+  .stat-value.good { color: #15803d; }
 
   .stat-sub {
     font-size: 0.7rem;
@@ -300,7 +295,7 @@
     display: flex;
     align-items: center;
     justify-content: space-between;
-    background: rgba(255,255,255,0.02);
+    background: var(--surface2);
   }
 
   .panel-title {
@@ -318,14 +313,15 @@
   }
 
   .panel-badge {
-    font-family: var(--font-mono);
-    font-size: 0.6rem;
-    letter-spacing: 0.1em;
-    padding: 3px 8px;
-    border-radius: 4px;
-    background: var(--teal-glow);
-    color: var(--teal);
-    border: 1px solid rgba(0,212,170,0.3);
+    font-family: var(--font-body);
+    font-size: 0.65rem;
+    font-weight: 600;
+    letter-spacing: 0.05em;
+    padding: 3px 10px;
+    border-radius: 20px;
+    background: rgba(12,35,64,0.08);
+    color: var(--navy);
+    border: 1px solid rgba(12,35,64,0.15);
   }
 
   .panel-body { padding: 1.2rem 1.4rem; }
@@ -622,8 +618,8 @@
   .form-select option { background: var(--surface); }
 
   .predict-btn {
-    background: linear-gradient(135deg, var(--teal), var(--blue));
-    color: var(--bg);
+    background: var(--navy);
+    color: #fff;
     border: none;
     border-radius: 8px;
     padding: 12px 28px;
@@ -636,7 +632,7 @@
     letter-spacing: 0.02em;
   }
 
-  .predict-btn:hover { transform: translateY(-1px); box-shadow: 0 8px 24px rgba(0,212,170,0.3); }
+  .predict-btn:hover { transform: translateY(-1px); box-shadow: 0 8px 24px rgba(12,35,64,0.25); }
   .predict-btn:active { transform: translateY(0); }
 
   /* ─── AI RESULT ─── */
@@ -905,13 +901,13 @@
 
   /* Leaflet custom popups */
   .leaflet-popup-content-wrapper {
-    background: var(--surface) !important;
+    background: #fff !important;
     border: 1px solid var(--border) !important;
     border-radius: 10px !important;
     color: var(--text) !important;
-    box-shadow: 0 8px 32px rgba(0,0,0,0.5) !important;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.12) !important;
   }
-  .leaflet-popup-tip { background: var(--surface) !important; }
+  .leaflet-popup-tip { background: #fff !important; }
   .leaflet-popup-content { margin: 12px 16px !important; font-family: var(--font-body); }
 
   .popup-title {
@@ -919,13 +915,14 @@
     font-weight: 700;
     font-size: 0.95rem;
     margin-bottom: 8px;
+    color: var(--navy);
   }
   .popup-row {
     font-size: 0.75rem;
     color: var(--text2);
     margin-bottom: 3px;
   }
-  .popup-row span { color: var(--teal); font-family: var(--font-mono); font-size: 0.8rem; }
+  .popup-row span { color: var(--navy); font-family: var(--font-body); font-weight: 600; font-size: 0.8rem; }
 </style>
 </head>
 <body>
@@ -933,10 +930,10 @@
 <!-- HEADER -->
 <header>
   <div class="logo">
-    <div class="logo-icon">🌊</div>
+    <div class="logo-icon">💧</div>
     <div>
       <div class="logo-text">Aqua<span>Trace</span></div>
-      <div class="logo-subtitle">North Bangalore · Groundwater Intelligence</div>
+      <div class="logo-subtitle">Groundwater Intelligence Portal — Karnataka</div>
     </div>
   </div>
   <div class="header-right">
@@ -946,14 +943,21 @@
   </div>
 </header>
 
+<!-- Tricolor bar -->
+<div style="display:flex;height:3px;">
+  <div style="flex:1;background:#ff9933;"></div>
+  <div style="flex:1;background:#ffffff;"></div>
+  <div style="flex:1;background:#138808;"></div>
+</div>
+
 <!-- NAV -->
 <nav>
-  <div class="nav-tab active" onclick="switchTab('dashboard')">01 / Dashboard</div>
-  <div class="nav-tab" onclick="switchTab('satellite')">02 / GRACE Satellite</div>
-  <div class="nav-tab" onclick="switchTab('iot')">03 / IoT Sensors</div>
-  <div class="nav-tab" onclick="switchTab('recharge')">04 / Recharge Zones</div>
-  <div class="nav-tab" onclick="switchTab('predict')">05 / AI Predict</div>
-  <div class="nav-tab" onclick="switchTab('rainfall')">06 / Rainfall Analysis</div>
+  <div class="nav-tab active" onclick="switchTab('dashboard')">📊 Dashboard</div>
+  <div class="nav-tab" onclick="switchTab('satellite')">🛰️ GRACE Satellite</div>
+  <div class="nav-tab" onclick="switchTab('iot')">📡 IoT Sensors</div>
+  <div class="nav-tab" onclick="switchTab('recharge')">🌿 Recharge Zones</div>
+  <div class="nav-tab" onclick="switchTab('predict')">🤖 AI Predict</div>
+  <div class="nav-tab" onclick="switchTab('rainfall')">🌧️ Rainfall</div>
 </nav>
 
 <!-- MAIN CONTENT -->
@@ -1524,8 +1528,8 @@ function initMainMap(zones) {
   });
 
   // Dark tile layer
-  L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
-    attribution: '© OpenStreetMap contributors © CARTO',
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution: '© OpenStreetMap contributors',
     maxZoom: 18
   }).addTo(mainMap);
 
@@ -1595,14 +1599,14 @@ function initGraceChart() {
     options: {
       responsive: true, maintainAspectRatio: false,
       plugins: { legend: { display: false }, tooltip: {
-        backgroundColor: '#0f1f36', borderColor: '#1e3a5f', borderWidth: 1,
-        titleColor: '#e2eaf4', bodyColor: '#8fa8c4'
+        backgroundColor: '#0c2340', borderColor: '#dce1e8', borderWidth: 1,
+        titleColor: '#fff', bodyColor: '#cbd5e1'
       }},
       scales: {
-        x: { grid: { color: '#1e3a5f' }, ticks: { color: '#4e6d8e', font: { family: 'Space Mono', size: 10 } } },
+        x: { grid: { color: '#eef1f5' }, ticks: { color: '#6b7280', font: { family: 'Source Sans 3', size: 10 } } },
         y: {
-          grid: { color: '#1e3a5f' }, ticks: { color: '#4e6d8e', font: { family: 'Space Mono', size: 10 } },
-          title: { display: true, text: 'cm water equivalent', color: '#4e6d8e', font: { family: 'Inter', size: 11 } }
+          grid: { color: '#eef1f5' }, ticks: { color: '#6b7280', font: { family: 'Source Sans 3', size: 10 } },
+          title: { display: true, text: 'cm water equivalent', color: '#6b7280', font: { family: 'Source Sans 3', size: 11 } }
         }
       }
     }
@@ -1632,14 +1636,14 @@ function initSatellitePage() {
     options: {
       responsive: true, maintainAspectRatio: false,
       plugins: { legend: { display: false }, tooltip: {
-        backgroundColor: '#0f1f36', borderColor: '#1e3a5f', borderWidth: 1,
-        titleColor: '#e2eaf4', bodyColor: '#8fa8c4'
+        backgroundColor: '#0c2340', borderColor: '#dce1e8', borderWidth: 1,
+        titleColor: '#fff', bodyColor: '#cbd5e1'
       }},
       scales: {
-        x: { grid: { color: '#1e3a5f' }, ticks: { color: '#4e6d8e', font: { family: 'Space Mono', size: 10 } } },
+        x: { grid: { color: '#eef1f5' }, ticks: { color: '#6b7280', font: { family: 'Source Sans 3', size: 10 } } },
         y: {
-          grid: { color: '#1e3a5f' }, ticks: { color: '#4e6d8e', font: { family: 'Space Mono', size: 10 } },
-          title: { display: true, text: 'cm water equivalent anomaly', color: '#4e6d8e' }
+          grid: { color: '#eef1f5' }, ticks: { color: '#6b7280', font: { family: 'Source Sans 3', size: 10 } },
+          title: { display: true, text: 'cm water equivalent anomaly', color: '#6b7280' }
         }
       }
     }
@@ -1721,8 +1725,8 @@ function initRechargePage() {
   if (rechargeMap) { rechargeMap.remove(); }
 
   rechargeMap = L.map('recharge-map', { center: [13.18, 77.62], zoom: 10 });
-  L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
-    attribution: '© OpenStreetMap contributors © CARTO', maxZoom: 18
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution: '© OpenStreetMap contributors', maxZoom: 18
   }).addTo(rechargeMap);
 
   // Draw all zones
@@ -1849,10 +1853,10 @@ function initRainfallPage() {
     },
     options: {
       responsive: true, maintainAspectRatio: false,
-      plugins: { legend: { display: false }, tooltip: { backgroundColor: '#0f1f36', borderColor: '#1e3a5f', borderWidth: 1, titleColor: '#e2eaf4', bodyColor: '#8fa8c4' } },
+      plugins: { legend: { display: false }, tooltip: { backgroundColor: '#0c2340', borderColor: '#dce1e8', borderWidth: 1, titleColor: '#fff', bodyColor: '#cbd5e1' } },
       scales: {
-        x: { grid: { color: '#1e3a5f' }, ticks: { color: '#4e6d8e', font: { family: 'Space Mono', size: 10 } } },
-        y: { grid: { color: '#1e3a5f' }, ticks: { color: '#4e6d8e', font: { family: 'Space Mono', size: 10 } } }
+        x: { grid: { color: '#eef1f5' }, ticks: { color: '#6b7280', font: { family: 'Source Sans 3', size: 10 } } },
+        y: { grid: { color: '#eef1f5' }, ticks: { color: '#6b7280', font: { family: 'Source Sans 3', size: 10 } } }
       }
     }
   });
@@ -1870,10 +1874,10 @@ function initRainfallPage() {
     },
     options: {
       responsive: true, maintainAspectRatio: false, indexAxis: 'y',
-      plugins: { legend: { display: false }, tooltip: { backgroundColor: '#0f1f36', borderColor: '#1e3a5f', borderWidth: 1, titleColor: '#e2eaf4', bodyColor: '#8fa8c4' } },
+      plugins: { legend: { display: false }, tooltip: { backgroundColor: '#0c2340', borderColor: '#dce1e8', borderWidth: 1, titleColor: '#fff', bodyColor: '#cbd5e1' } },
       scales: {
-        x: { grid: { color: '#1e3a5f' }, ticks: { color: '#4e6d8e', font: { family: 'Space Mono', size: 10 } } },
-        y: { grid: { display: false }, ticks: { color: '#e2eaf4', font: { family: 'Inter', size: 11 } } }
+        x: { grid: { color: '#eef1f5' }, ticks: { color: '#6b7280', font: { family: 'Source Sans 3', size: 10 } } },
+        y: { grid: { display: false }, ticks: { color: '#1a1f2b', font: { family: 'Source Sans 3', size: 11 } } }
       }
     }
   });
@@ -1896,10 +1900,10 @@ function initRainfallPage() {
     },
     options: {
       responsive: true, maintainAspectRatio: false,
-      plugins: { legend: { labels: { color: '#8fa8c4', font: { family: 'Inter', size: 11 } } }, tooltip: { backgroundColor: '#0f1f36', borderColor: '#1e3a5f', borderWidth: 1, titleColor: '#e2eaf4', bodyColor: '#8fa8c4' } },
+      plugins: { legend: { labels: { color: '#4b5563', font: { family: 'Source Sans 3', size: 11 } } }, tooltip: { backgroundColor: '#0c2340', borderColor: '#dce1e8', borderWidth: 1, titleColor: '#fff', bodyColor: '#cbd5e1' } },
       scales: {
-        x: { grid: { color: '#1e3a5f' }, ticks: { color: '#4e6d8e', font: { family: 'Space Mono', size: 10 } } },
-        y: { grid: { color: '#1e3a5f' }, ticks: { color: '#4e6d8e', font: { family: 'Space Mono', size: 10 } }, position: 'left' },
+        x: { grid: { color: '#eef1f5' }, ticks: { color: '#6b7280', font: { family: 'Source Sans 3', size: 10 } } },
+        y: { grid: { color: '#eef1f5' }, ticks: { color: '#6b7280', font: { family: 'Source Sans 3', size: 10 } }, position: 'left' },
         y1: { display: false, position: 'right' }
       }
     }

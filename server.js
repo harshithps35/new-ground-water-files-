@@ -9,7 +9,6 @@ const PORT = process.env.PORT || 3000;
 // Middleware
 app.use(cors());
 app.use(express.json());
-app.use(express.static(path.join(__dirname, 'public')));
 
 // Rate limiting
 const apiLimiter = rateLimit({
@@ -23,20 +22,59 @@ app.use('/api/', apiLimiter);
 const apiRouter = require('./routes/api');
 app.use('/api', apiRouter);
 
+// Auth Routes
+const authRouter = require('./routes/auth');
+app.use('/api/auth', authRouter);
+
+// Serve React build if it exists (production mode)
+const reactBuildPath = path.join(__dirname, 'frontend', 'dist');
+const fs = require('fs');
+
+if (fs.existsSync(reactBuildPath)) {
+  // Production: serve React build
+  app.use(express.static(reactBuildPath));
+
+  app.get('*', (req, res) => {
+    res.sendFile(path.join(reactBuildPath, 'index.html'));
+  });
+
+  console.log('📦 Serving React production build from frontend/dist');
+} else {
+  // Development fallback: serve old public/ files
+  app.use(express.static(path.join(__dirname, 'public')));
+
+  app.get('/login', (req, res) => {
+    res.sendFile(path.join(__dirname, 'public', 'login.html'));
+  });
+
+  app.get('*', (req, res) => {
+    res.sendFile(path.join(__dirname, 'public', 'index.html'));
+  });
+
+  console.log('🔧 Dev mode: serving public/ (use Vite for React frontend)');
+}
+
 // Health check
 app.get('/health', (req, res) => {
   res.json({
     status: 'healthy',
-    service: 'Groundwater Monitor - North Bangalore',
-    version: '1.0.0',
+    service: 'AquaTrace Groundwater Intelligence API',
+    version: '2.0.0',
     uptime: process.uptime(),
-    timestamp: new Date().toISOString()
+    timestamp: new Date().toISOString(),
+    endpoints: [
+      'GET  /api/summary',
+      'GET  /api/zones',
+      'GET  /api/zones/:id',
+      'GET  /api/grace',
+      'GET  /api/rainfall',
+      'GET  /api/recharge-zones',
+      'POST /api/predict',
+      'GET  /api/iot/sensors',
+      'POST /api/auth/register',
+      'POST /api/auth/login',
+    ]
   });
-});
-
-// Serve frontend for all other routes (SPA)
-app.get('*', (req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
 // Error handler
@@ -47,11 +85,12 @@ app.use((err, req, res, next) => {
 
 app.listen(PORT, () => {
   console.log(`
-╔════════════════════════════════════════════════════╗
-║  🌊 Groundwater Monitor - North Bangalore          ║
-║  Server running at http://localhost:${PORT}           ║
-║  API available at http://localhost:${PORT}/api       ║
-╚════════════════════════════════════════════════════╝
+╔══════════════════════════════════════════════════════╗
+║  💧 AquaTrace — Groundwater Intelligence API         ║
+║  Server running at http://localhost:${PORT}              ║
+║  API available at http://localhost:${PORT}/api          ║
+║  Health check at http://localhost:${PORT}/health        ║
+╚══════════════════════════════════════════════════════╝
   `);
 });
 
