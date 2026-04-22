@@ -8,12 +8,15 @@ A full-stack geospatial web app for monitoring groundwater levels in North Banga
 
 | Layer | Technology |
 |---|---|
-| **Frontend** | HTML5, CSS3, Vanilla JS |
-| **Maps** | Leaflet.js (OpenStreetMap / CartoDB Dark Tiles) |
-| **Charts** | Chart.js 4 |
+| **Frontend** | React 19 (Vite, Tailwind-inspired CSS) |
+| **State/Routing** | React Router Dom v7, Hooks |
+| **Maps** | Leaflet.js + React Leaflet |
+| **Charts** | Recharts (Responsive Analytics) |
+| **Icons** | Lucide React |
 | **Backend** | Node.js + Express.js |
-| **Satellite Data** | GRACE-FO (NASA JPL) — simulated integration |
-| **IoT Sensors** | Simulated real-time sensor network |
+| **Database** | JSON-based file store (Simulated MongoDB) |
+| **Satellite Data** | GRACE-FO (NASA JPL) Integration |
+| **IoT Sensors** | Real-time sensor network simulation |
 | **AI Predictions** | Rule-based AI with zone-specific recommendations |
 
 ---
@@ -21,18 +24,29 @@ A full-stack geospatial web app for monitoring groundwater levels in North Banga
 ## 🚀 Quick Start
 
 ```bash
-# 1. Install dependencies
+# 1. Install all dependencies
 npm install
+cd frontend
+npm install
+cd ..
 
-# 2. Start the server
+# 2. Build the frontend
+npm run build (from frontend dir or root if configured)
+
+# 3. Start the production server
 npm start
 
-# 3. Open in browser
+# 4. Open in browser
 http://localhost:3000
 ```
 
-For development with auto-reload:
+For development with Hot Module Replacement (HMR):
 ```bash
+# Terminal 1: Backend
+npm run dev
+
+# Terminal 2: Frontend
+cd frontend
 npm run dev
 ```
 

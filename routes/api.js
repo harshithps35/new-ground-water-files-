@@ -63,34 +63,107 @@ router.get('/grace', (req, res) => {
   });
 });
 
-// GET /api/rainfall - Monthly rainfall analysis
+// Load historical rainfall JSON
+const rainfallJSON = require('../data/rainfall-analysis.json');
+const MONTHS_SHORT = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+
+function parseRainfallRecords() {
+  return rainfallJSON.records
+    .filter(r => r[1] && !r[1].startsWith('LPA'))
+    .map(r => {
+      const monthly = MONTHS_SHORT.map((m, i) => ({ month: m, rainfall_mm: parseFloat(r[i + 2]) || 0 }));
+      const total = monthly.reduce((a, d) => a + d.rainfall_mm, 0);
+      return {
+        year: r[1],
+        data: monthly,
+        total: +total.toFixed(1),
+        elNino: r[15] === 'Y',
+        laNina: r[16] === 'Y'
+      };
+    });
+}
+
+function getLPA() {
+  const lpa1 = rainfallJSON.records.find(r => r[1] && r[1].startsWith('LPA (1991'));
+  const lpa2 = rainfallJSON.records.find(r => r[1] && r[1].startsWith('LPA (1981'));
+  const parse = (row) => row ? MONTHS_SHORT.map((m, i) => ({ month: m, rainfall_mm: parseFloat(row[i + 2]) || 0 })) : [];
+  return {
+    lpa_1991_2020: { label: 'LPA 1991-2020', data: parse(lpa1), total: lpa1 ? parseFloat(lpa1[14]) || 0 : 0 },
+    lpa_1981_2010: { label: 'LPA 1981-2010', data: parse(lpa2), total: lpa2 ? parseFloat(lpa2[14]) || 0 : 0 }
+  };
+}
+
+// GET /api/rainfall - Full historical rainfall analysis
 router.get('/rainfall', (req, res) => {
-  const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-  const yearlyData = Object.entries(monthlyRainfallData).map(([year, values]) => ({
-    year,
-    data: values.map((v, i) => ({ month: months[i], rainfall_mm: v })),
-    total: values.reduce((a, b) => a + b, 0).toFixed(1),
-    average: (values.filter(v => v > 0).reduce((a, b) => a + b, 0) / values.filter(v => v > 0).length).toFixed(1)
+  const allYears = parseRainfallRecords();
+  const { year, from, to } = req.query;
+
+  let filtered = allYears;
+  if (year) filtered = allYears.filter(y => y.year === year);
+  else if (from || to) {
+    const f = parseInt(from) || 1901, t = parseInt(to) || 2024;
+    filtered = allYears.filter(y => parseInt(y.year) >= f && parseInt(y.year) <= t);
+  }
+
+  // Decade averages
+  const decades = {};
+  allYears.forEach(y => {
+    const dec = Math.floor(parseInt(y.year) / 10) * 10 + 's';
+    if (!decades[dec]) decades[dec] = [];
+    decades[dec].push(y.total);
+  });
+  const decadeAvg = Object.entries(decades).map(([dec, vals]) => ({
+    decade: dec, avg: +(vals.reduce((a, b) => a + b, 0) / vals.length).toFixed(1), count: vals.length
   }));
+
+  // El Niño vs La Niña stats
+  const elNinoYears = allYears.filter(y => y.elNino);
+  const laNinaYears = allYears.filter(y => y.laNina);
+  const normalYears = allYears.filter(y => !y.elNino && !y.laNina);
 
   res.json({
     success: true,
-    data: yearlyData,
+    data: filtered,
+    total_years: allYears.length,
+    available_years: allYears.map(y => y.year),
+    lpa: getLPA(),
+    decade_averages: decadeAvg,
+    climate_analysis: {
+      el_nino: { count: elNinoYears.length, avg_total: +(elNinoYears.reduce((a, y) => a + y.total, 0) / elNinoYears.length).toFixed(1) },
+      la_nina: { count: laNinaYears.length, avg_total: +(laNinaYears.reduce((a, y) => a + y.total, 0) / laNinaYears.length).toFixed(1) },
+      normal: { count: normalYears.length, avg_total: +(normalYears.reduce((a, y) => a + y.total, 0) / normalYears.length).toFixed(1) }
+    },
     percolation_analysis: {
       optimal_months_for_recharge: ["Jun", "Jul", "Aug", "Sep", "Oct"],
-      percolation_rate_mm_per_hour: {
-        sandy_loam: 12.5,
-        red_laterite: 6.2,
-        clay: 1.8,
-        alluvial: 18.3
-      },
-      recommended_pond_capacity_liters: {
-        residential_100sqm: 45000,
-        commercial_500sqm: 225000,
-        industrial_1000sqm: 450000
-      }
+      percolation_rate_mm_per_hour: { sandy_loam: 12.5, red_laterite: 6.2, clay: 1.8, alluvial: 18.3 },
+      recommended_pond_capacity_liters: { residential_100sqm: 45000, commercial_500sqm: 225000, industrial_1000sqm: 450000 }
     }
   });
+});
+
+// GET /api/borewells - Borewell inventory data with zone filtering
+router.get('/borewells', (req, res) => {
+  try {
+    const borewells = require('../data/borewells.json');
+    const { zone } = req.query;
+
+    // Zone distribution
+    const zoneCounts = {};
+    borewells.forEach(b => { zoneCounts[b.zone] = (zoneCounts[b.zone] || 0) + 1; });
+    const zones = Object.entries(zoneCounts).map(([name, count]) => ({ name, count })).sort((a, b) => b.count - a.count);
+
+    const filtered = zone && zone !== 'all' ? borewells.filter(b => b.zone === zone) : borewells;
+
+    res.json({
+      success: true,
+      count: filtered.length,
+      total: borewells.length,
+      zones,
+      data: filtered
+    });
+  } catch (err) {
+    res.status(500).json({ success: false, message: 'Failed to load borewell data' });
+  }
 });
 
 // GET /api/recharge-zones - Identified recharge areas

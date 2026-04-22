@@ -3,6 +3,7 @@ import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContai
 import { AlertTriangle, Droplets, Radio, Satellite, MapPin, TrendingDown } from 'lucide-react';
 import { MapContainer, TileLayer, CircleMarker, Popup } from 'react-leaflet';
 import { apiFetch } from '../api';
+import { MAP_CONFIG } from '../mapConfig';
 import { MOCK_ZONES, GRACE_DATA, STATUS_COLORS, STATUS_LABELS, depthToPercent } from '../data/mockData';
 import 'leaflet/dist/leaflet.css';
 
@@ -74,7 +75,9 @@ export default function Dashboard() {
         </div>
         <div style={{ height: 380 }}>
           {zones.length > 0 && (
-            <MapContainer center={[13.15, 77.62]} zoom={10} style={{ height: '100%', width: '100%', background: '#0a0a0f', borderRadius: '0 0 12px 12px' }}>
+            <MapContainer 
+              {...MAP_CONFIG}
+              style={{ height: '100%', width: '100%', background: '#0a0a0f', borderRadius: '0 0 12px 12px' }}>
               <TileLayer url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png" attribution="&copy; OSM &copy; CARTO" />
               {zones.map(zone => {
                 const col = STATUS_COLORS[zone.status];

@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { MapContainer, TileLayer, CircleMarker, Popup } from 'react-leaflet';
 import { apiFetch } from '../api';
+import { MAP_CONFIG } from '../mapConfig';
 import { Map as MapIcon, Table, Search, Droplets, Info, MapPin, Filter, ChevronDown } from 'lucide-react';
 import 'leaflet/dist/leaflet.css';
 
@@ -141,7 +142,11 @@ export default function BorewellInventory() {
           )}
 
           {view === 'map' ? (
-            <MapContainer key={selectedZone} center={mapCenter} zoom={selectedZone === 'all' ? 11 : 12}
+            <MapContainer 
+              key={selectedZone} 
+              {...MAP_CONFIG}
+              center={mapCenter} 
+              zoom={selectedZone === 'all' ? 11 : 12}
               style={{ height: '100%', width: '100%', borderRadius: '0 0 12px 12px' }}>
               <TileLayer url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
                 attribution='&copy; OSM &copy; CARTO' />

@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react';
 import { MapContainer, TileLayer, CircleMarker, Polygon, Popup, Tooltip as LTooltip } from 'react-leaflet';
 import { MOCK_ZONES, STATUS_COLORS } from '../data/mockData';
+import { MAP_CONFIG } from '../mapConfig';
 import 'leaflet/dist/leaflet.css';
 
 const RECHARGE = [
@@ -25,7 +26,9 @@ export default function RechargeZones() {
           <div className="card-badge">Geospatial</div>
         </div>
         <div style={{ height: 420 }}>
-          <MapContainer center={[13.18, 77.62]} zoom={10} style={{ height: '100%', width: '100%', background: '#0a0a0f' }}>
+          <MapContainer 
+            {...MAP_CONFIG}
+            style={{ height: '100%', width: '100%', background: '#0a0a0f' }}>
             <TileLayer url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png" attribution="&copy; OSM &copy; CARTO" />
             {MOCK_ZONES.map(z => (
               <CircleMarker key={z.id} center={[z.lat, z.lng]} radius={10} fillColor={STATUS_COLORS[z.status]} color={STATUS_COLORS[z.status]} fillOpacity={0.3} weight={1}>

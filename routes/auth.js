@@ -22,7 +22,7 @@ function saveUsers(users) {
   fs.writeFileSync(USERS_FILE, JSON.stringify(users, null, 2), 'utf-8');
 }
 
-// Helper: hash password (SHA-256 with salt)
+// Helper: hash password (PBKDF2 with salt)
 function hashPassword(password, salt) {
   if (!salt) salt = crypto.randomBytes(16).toString('hex');
   const hash = crypto.pbkdf2Sync(password, salt, 1000, 64, 'sha512').toString('hex');
@@ -45,7 +45,6 @@ router.post('/register', (req, res) => {
 
   const users = readUsers();
 
-  // Check if already registered
   const exists = users.find(u =>
     (email && u.email === email.toLowerCase()) ||
     (phone && u.phone === phone)
@@ -104,7 +103,7 @@ router.post('/login', (req, res) => {
 
   res.json({
     success: true,
-    message: 'Login successful! Redirecting...',
+    message: 'Login successful!',
     user: {
       id: user.id,
       name: user.name,

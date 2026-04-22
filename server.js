@@ -26,32 +26,22 @@ app.use('/api', apiRouter);
 const authRouter = require('./routes/auth');
 app.use('/api/auth', authRouter);
 
-// Serve React build if it exists (production mode)
-const reactBuildPath = path.join(__dirname, 'frontend', 'dist');
 const fs = require('fs');
 
-if (fs.existsSync(reactBuildPath)) {
-  // Production: serve React build
-  app.use(express.static(reactBuildPath));
+// Serve React production build
+const reactBuildPath = path.join(__dirname, 'frontend', 'dist');
 
+if (fs.existsSync(reactBuildPath)) {
+  app.use(express.static(reactBuildPath));
   app.get('*', (req, res) => {
     res.sendFile(path.join(reactBuildPath, 'index.html'));
   });
-
-  console.log('📦 Serving React production build from frontend/dist');
+  console.log('🚀 Serving Production Build: frontend/dist');
 } else {
-  // Development fallback: serve old public/ files
-  app.use(express.static(path.join(__dirname, 'public')));
-
-  app.get('/login', (req, res) => {
-    res.sendFile(path.join(__dirname, 'public', 'login.html'));
+  console.warn('⚠️ Warning: frontend/dist not found. Run "npm run build" in the frontend directory.');
+  app.get('/', (req, res) => {
+    res.status(500).send('Frontend build missing. Please run build script.');
   });
-
-  app.get('*', (req, res) => {
-    res.sendFile(path.join(__dirname, 'public', 'index.html'));
-  });
-
-  console.log('🔧 Dev mode: serving public/ (use Vite for React frontend)');
 }
 
 // Health check
