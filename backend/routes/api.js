@@ -278,4 +278,189 @@ router.get('/summary', (req, res) => {
   });
 });
 
+// ==================== RAINFALL & GROUNDWATER PREDICTION ENDPOINTS ====================
+
+// GET /api/predict/rainfall-next-months - Predict rainfall for next 2 months
+router.get('/predict/rainfall-next-months', (req, res) => {
+  const { monthsAhead = 2 } = req.query;
+  const predictions = require('../utils/predictions');
+
+  try {
+    const allYears = parseRainfallRecords();
+    const rainfallPredictions = predictions.predictRainfallARIMA(allYears, Math.min(parseInt(monthsAhead), 12));
+
+    res.json({
+      success: true,
+      prediction_type: 'SHORT_TERM',
+      months_ahead: parseInt(monthsAhead),
+      forecast_date: new Date().toISOString(),
+      data: rainfallPredictions,
+      methodology: 'ARIMA time series analysis with seasonal decomposition',
+      summary: {
+        predicted_total_mm: rainfallPredictions.reduce((a, p) => a + p.predicted_rainfall_mm, 0).toFixed(1),
+        average_confidence: (rainfallPredictions.reduce((a, p) => a + parseFloat(p.confidence), 0) / rainfallPredictions.length).toFixed(2),
+        risk_distribution: {
+          high: rainfallPredictions.filter(p => p.riskLevel === 'HIGH').length,
+          medium: rainfallPredictions.filter(p => p.riskLevel === 'MEDIUM').length,
+          low: rainfallPredictions.filter(p => p.riskLevel === 'LOW').length
+        }
+      }
+    });
+  } catch (err) {
+    res.status(500).json({ success: false, message: 'Prediction failed', error: err.message });
+  }
+});
+
+// GET /api/predict/rainfall-full-year - Predict rainfall for entire year
+router.get('/predict/rainfall-full-year', (req, res) => {
+  const predictions = require('../utils/predictions');
+
+  try {
+    const allYears = parseRainfallRecords();
+    const yearlyForecast = predictions.predictFullYearRainfall(allYears);
+
+    res.json({
+      success: true,
+      prediction_type: 'FULL_YEAR',
+      forecast_date: new Date().toISOString(),
+      forecast_year: new Date().getFullYear(),
+      ...yearlyForecast,
+      methodology: 'Ensemble learning with trend analysis and seasonal patterns',
+      comparison_with_lpa: {
+        lpa_total_mm: 1077,
+        predicted_vs_lpa_percent: ((yearlyForecast.annualPredictedTotal - 1077) / 1077 * 100).toFixed(1),
+        trend: yearlyForecast.annualPredictedTotal > 1077 ? 'ABOVE_AVERAGE' : 'BELOW_AVERAGE'
+      }
+    });
+  } catch (err) {
+    res.status(500).json({ success: false, message: 'Full year prediction failed', error: err.message });
+  }
+});
+
+// POST /api/predict/groundwater-levels - Predict groundwater levels for a zone
+router.post('/predict/groundwater-levels', (req, res) => {
+  const { zone_id, months_ahead = 2 } = req.body;
+  const predictions = require('../utils/predictions');
+
+  try {
+    // Find zone
+    const zone = northBangaloreZones.find(z => z.id === zone_id);
+    if (!zone) {
+      return res.status(404).json({ success: false, message: 'Zone not found' });
+    }
+
+    // Get rainfall predictions
+    const allYears = parseRainfallRecords();
+    const rainfallPredictions = predictions.predictRainfallARIMA(allYears, parseInt(months_ahead));
+
+    // Get groundwater predictions
+    const gwPredictions = predictions.predictGroundwaterLevels(zone, rainfallPredictions);
+
+    res.json({
+      success: true,
+      zone: {
+        id: zone.id,
+        name: zone.name,
+        current_level_m: zone.groundwaterLevel,
+        status: zone.status,
+        lat: zone.lat,
+        lng: zone.lng
+      },
+      predictions: gwPredictions,
+      summary: {
+        average_predicted_level_m: (gwPredictions.reduce((a, p) => a + p.predicted_level_m, 0) / gwPredictions.length).toFixed(2),
+        level_trend: gwPredictions[gwPredictions.length - 1].predicted_level_m > gwPredictions[0].predicted_level_m ? 'DECLINING' : 'IMPROVING',
+        critical_months: gwPredictions.filter(p => p.risk_level === 'CRITICAL').map(p => p.month),
+        improving_months: gwPredictions.filter(p => p.risk_level === 'IMPROVING').map(p => p.month)
+      }
+    });
+  } catch (err) {
+    res.status(500).json({ success: false, message: 'Groundwater prediction failed', error: err.message });
+  }
+});
+
+// POST /api/predict/water-management - Get water management recommendations
+router.post('/predict/water-management', (req, res) => {
+  const { zone_id, months_ahead = 2 } = req.body;
+  const predictions = require('../utils/predictions');
+
+  try {
+    // Find zone
+    const zone = northBangaloreZones.find(z => z.id === zone_id);
+    if (!zone) {
+      return res.status(404).json({ success: false, message: 'Zone not found' });
+    }
+
+    // Get rainfall predictions
+    const allYears = parseRainfallRecords();
+    const rainfallPredictions = predictions.predictRainfallARIMA(allYears, parseInt(months_ahead));
+
+    // Get groundwater predictions
+    const gwPredictions = predictions.predictGroundwaterLevels(zone, rainfallPredictions);
+
+    // Get management recommendations
+    const recommendations = predictions.generateWaterManagementRecommendations(zone, gwPredictions);
+
+    res.json({
+      success: true,
+      zone: zone.name,
+      zone_id: zone.id,
+      zone_status: zone.status,
+      current_groundwater_level_m: zone.groundwaterLevel,
+      current_grace_anomaly_cm: zone.graceAnomaly,
+      forecast_period: `${parseInt(months_ahead)} months`,
+      recommendations,
+      actionable_insights: {
+        immediate_priority: gwPredictions.filter(p => p.risk_level === 'CRITICAL').length > 0 ? 'Deploy emergency water conservation measures' : 'Monitor regularly',
+        seasonal_planning: zone.status === 'critical' || zone.status === 'extremely_low' ? 'Critical water deficit - activate recharge structures' : 'Maintain current practices',
+        monitoring_frequency: recommendations.monitoringPriority === 'CRITICAL' ? 'Daily' : recommendations.monitoringPriority === 'HIGH' ? 'Weekly' : 'Monthly'
+      }
+    });
+  } catch (err) {
+    res.status(500).json({ success: false, message: 'Water management recommendations failed', error: err.message });
+  }
+});
+
+// GET /api/zones/:id/analysis - Comprehensive zone analysis with predictions
+router.get('/zones/:id/analysis', (req, res) => {
+  const zone = northBangaloreZones.find(z => z.id === req.params.id);
+  if (!zone) return res.status(404).json({ success: false, message: 'Zone not found' });
+
+  const predictions = require('../utils/predictions');
+
+  try {
+    const allYears = parseRainfallRecords();
+    const rainfallPredictions = predictions.predictRainfallARIMA(allYears, 2);
+    const gwPredictions = predictions.predictGroundwaterLevels(zone, rainfallPredictions);
+    const recommendations = predictions.generateWaterManagementRecommendations(zone, gwPredictions);
+
+    res.json({
+      success: true,
+      zone_details: {
+        id: zone.id,
+        name: zone.name,
+        lat: zone.lat,
+        lng: zone.lng,
+        status: zone.status,
+        groundwater_level_m: zone.groundwaterLevel,
+        grace_anomaly_cm: zone.graceAnomaly,
+        recharge_rate_mm_day: zone.rechargeRate,
+        rainfall_30_days_mm: zone.rainfall30Days,
+        borewell_count: zone.borewellCount,
+        percolation_pond_exists: zone.percolationPondExists
+      },
+      rainfall_predictions: rainfallPredictions,
+      groundwater_predictions: gwPredictions,
+      management_recommendations: recommendations,
+      risk_assessment: {
+        current_risk_level: zone.status,
+        predicted_risk_level: gwPredictions[gwPredictions.length - 1].risk_level,
+        trend: gwPredictions[gwPredictions.length - 1].trend
+      }
+    });
+  } catch (err) {
+    res.status(500).json({ success: false, message: 'Zone analysis failed', error: err.message });
+  }
+});
+
 module.exports = router;
