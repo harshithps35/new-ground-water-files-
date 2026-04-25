@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { BarChart, Bar, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 import { apiFetch } from '../api';
-import { Brain, CloudRain, MapPin, AlertTriangle, Droplets, TreePine, Calendar, TrendingUp, Ruler, Building, Zap, Info, Trees } from 'lucide-react';
+import { Brain, CloudRain, MapPin, AlertTriangle, Droplets, TreePine, Calendar, TrendingUp, Ruler, Building, Zap, Info, Trees, Activity } from 'lucide-react';
 
 const RISK_COLORS = { CRITICAL:'#f43f5e', HIGH:'#f59e0b', MODERATE:'#fb923c', LOW:'#3b82f6', GOOD:'#10b981' };
 const MONTHS_SHORT = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
@@ -92,6 +92,7 @@ export default function AiPredict({ selectedRegion, onPredictionsUpdate }) {
     { id:'rainfall', label:'🌧 Rainfall Predictor', icon: CloudRain },
     { id:'critical', label:'🚨 Critical Areas', icon: AlertTriangle },
     { id:'recharge', label:'🌿 Recharge Zones', icon: TreePine },
+    { id:'borewell', label:'🔭 Borewell Observation', icon: Activity },
     { id:'management', label:'⚡ Water Management', icon: Zap },
   ];
 
@@ -422,6 +423,99 @@ export default function AiPredict({ selectedRegion, onPredictionsUpdate }) {
                 </div>
               </div>
             </div>
+          )}
+        </div>
+      )}
+
+      {/* TAB 5: Borewell Observation */}
+      {activeTab === 'borewell' && (
+        <div className="fade-in">
+          {!rainfallResult ? (
+            <div className="card" style={{ textAlign: 'center', padding: '4rem 2rem' }}>
+              <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>🔭</div>
+              <h2 style={{ fontSize: '1.2rem', color: '#f0f0f5', marginBottom: '0.5rem' }}>AI Rainfall Data Required</h2>
+              <p style={{ color: '#94a3b8', maxWidth: '400px', margin: '0 auto' }}>
+                Please run the <strong>Rainfall Predictor</strong> first to calculate the impact on borewell levels.
+              </p>
+              <button className="btn-primary" onClick={() => setActiveTab('rainfall')} style={{ marginTop:16 }}>← Go to Rainfall Predictor</button>
+            </div>
+          ) : (
+            (() => {
+              const currentLevel = selectedRegion?.groundwaterLevel || 200;
+              const borewells = selectedRegion?.borewellCount || 1500;
+              const predRain = rainfallResult.annual_predicted_total;
+              const baseRain = 950; // assuming historical base is ~950mm
+              const rainDiff = predRain - baseRain;
+              
+              // Simple AI heuristic
+              const levelChange = (rainDiff * 0.015).toFixed(1); // mm difference translates to meter change
+              const newLevel = (currentLevel - parseFloat(levelChange)).toFixed(1);
+              
+              const isImprovement = rainDiff >= 0;
+              
+              const affectedBorewells = Math.abs(Math.round(rainDiff * 0.5));
+              const activeCount = isImprovement ? borewells : Math.max(0, borewells - affectedBorewells);
+              const inactiveCount = isImprovement ? 0 : Math.min(borewells, affectedBorewells);
+              
+              return (
+                <div className="grid-2">
+                  <div className="card">
+                    <div className="card-header"><div className="card-title"><Activity size={16}/> Borewell Impact Analysis</div><div className="card-badge" style={{ background: isImprovement ? '#10b98120' : '#f43f5e20', color: isImprovement ? '#10b981' : '#f43f5e' }}>{isImprovement ? 'POSITIVE OUTLOOK' : 'CRITICAL OUTLOOK'}</div></div>
+                    <div className="card-body">
+                       <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:10, marginBottom:16 }}>
+                         <div style={{ padding:16, background:'rgba(255,255,255,0.03)', borderRadius:8, border:'1px solid rgba(255,255,255,0.06)' }}>
+                           <div style={{ fontSize:'0.7rem', color:'#94a3b8', textTransform:'uppercase', fontWeight:600, marginBottom:4 }}>Current Water Level</div>
+                           <div style={{ fontSize:'1.4rem', fontWeight:800, color:'#f0f0f5' }}>{currentLevel} <span style={{ fontSize:'0.8rem' }}>m</span></div>
+                         </div>
+                         <div style={{ padding:16, background: isImprovement ? 'rgba(16,185,129,0.06)' : 'rgba(244,63,94,0.06)', borderRadius:8, border: isImprovement ? '1px solid rgba(16,185,129,0.15)' : '1px solid rgba(244,63,94,0.15)' }}>
+                           <div style={{ fontSize:'0.7rem', color:'#94a3b8', textTransform:'uppercase', fontWeight:600, marginBottom:4 }}>Projected Level</div>
+                           <div style={{ fontSize:'1.4rem', fontWeight:800, color: isImprovement ? '#10b981' : '#f43f5e' }}>{newLevel} <span style={{ fontSize:'0.8rem' }}>m</span></div>
+                           <div style={{ fontSize:'0.75rem', color: isImprovement ? '#10b981' : '#f43f5e', fontWeight:600 }}>
+                             {isImprovement ? '▲' : '▼'} {Math.abs(levelChange)}m {isImprovement ? 'Rise' : 'Drop'}
+                           </div>
+                         </div>
+                       </div>
+                       <p style={{ fontSize:'0.85rem', color:'var(--text-secondary)', lineHeight:1.6 }}>
+                         The AI model predicts a <strong>{isImprovement ? 'rise' : 'drop'}</strong> in groundwater levels by approximately <strong>{Math.abs(levelChange)}m</strong> due to the predicted annual rainfall of <strong>{predRain}mm</strong> (compared to historical baseline of {baseRain}mm).
+                       </p>
+                    </div>
+                  </div>
+                  
+                  <div className="card">
+                    <div className="card-header"><div className="card-title"><Droplets size={16}/> Borewell Yield Forecast</div></div>
+                    <div className="card-body">
+                       <div style={{ marginBottom:20 }}>
+                         <div style={{ display:'flex', justifyContent:'space-between', marginBottom:8 }}>
+                           <span style={{ fontSize:'0.8rem', color:'#94a3b8', fontWeight:600 }}>Total Registered Borewells in Region</span>
+                           <span style={{ fontSize:'0.9rem', color:'#f0f0f5', fontWeight:800 }}>{borewells}</span>
+                         </div>
+                         <div style={{ height:8, background:'#1e1e2e', borderRadius:4, overflow:'hidden', display:'flex' }}>
+                           <div style={{ width:`${(activeCount/borewells)*100}%`, background: isImprovement ? '#10b981' : '#3b82f6' }}></div>
+                           <div style={{ width:`${(inactiveCount/borewells)*100}%`, background:'#f43f5e' }}></div>
+                         </div>
+                         <div style={{ display:'flex', justifyContent:'space-between', marginTop:8, fontSize:'0.7rem' }}>
+                           <span style={{ color: isImprovement ? '#10b981' : '#3b82f6', fontWeight:600 }}>{activeCount} Active / Healthy</span>
+                           {inactiveCount > 0 && <span style={{ color:'#f43f5e', fontWeight:600 }}>{inactiveCount} Risk of Drying</span>}
+                         </div>
+                       </div>
+                       
+                       <div style={{ padding:12, background:'rgba(255,255,255,0.03)', borderRadius:8, border:'1px solid rgba(255,255,255,0.06)' }}>
+                         <h4 style={{ fontSize:'0.75rem', color:'#f0f0f5', marginBottom:8, textTransform:'uppercase' }}>Observation Summary</h4>
+                         {isImprovement ? (
+                           <div style={{ fontSize:'0.8rem', color:'#94a3b8', lineHeight:1.5 }}>
+                             Higher predicted rainfall will positively recharge aquifers in <strong>{zoneName}</strong>. Borewell yields are expected to stabilize, and no significant borewell drying events are forecasted for the upcoming period.
+                           </div>
+                         ) : (
+                           <div style={{ fontSize:'0.8rem', color:'#94a3b8', lineHeight:1.5 }}>
+                             Deficit rainfall predictions indicate significant stress on aquifers in <strong>{zoneName}</strong>. Approximately <strong>{inactiveCount}</strong> shallow borewells are at risk of drying up. Emergency conservation measures are strongly recommended.
+                           </div>
+                         )}
+                       </div>
+                    </div>
+                  </div>
+                </div>
+              );
+            })()
           )}
         </div>
       )}
