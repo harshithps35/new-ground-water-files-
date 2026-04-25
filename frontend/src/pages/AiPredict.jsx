@@ -1,208 +1,434 @@
 import { useState, useEffect } from 'react';
+import { BarChart, Bar, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 import { apiFetch } from '../api';
-import { MOCK_ZONES, AI_RECS } from '../data/mockData';
-import { Brain, CloudRain, Ruler, Building, Info, TrendingUp, History } from 'lucide-react';
+import { Brain, CloudRain, MapPin, AlertTriangle, Droplets, TreePine, Calendar, TrendingUp, Ruler, Building, Zap, Info, Trees } from 'lucide-react';
 
-const RISK_COLORS = { CRITICAL: '#f43f5e', HIGH: '#f59e0b', MEDIUM: '#fb923c', WATCH: '#3b82f6', GOOD: '#10b981', EXCELLENT: '#6366f1' };
-const RISK_ICONS = { CRITICAL: '🚨', HIGH: '⚠️', MEDIUM: '⚡', WATCH: '👁', GOOD: '✅', EXCELLENT: '🌟' };
+const RISK_COLORS = { CRITICAL:'#f43f5e', HIGH:'#f59e0b', MODERATE:'#fb923c', LOW:'#3b82f6', GOOD:'#10b981' };
+const MONTHS_SHORT = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 
-export default function AiPredict() {
-  const [zone, setZone] = useState('');
-  const [area, setArea] = useState('300');
-  const [type, setType] = useState('residential');
-  const [rain, setRain] = useState('1077'); // Default to LPA
-  const [selectedYear, setSelectedYear] = useState('');
-  const [yearsData, setYearsData] = useState([]);
-  const [result, setResult] = useState(null);
+export default function AiPredict({ selectedRegion, onPredictionsUpdate }) {
+  const [activeTab, setActiveTab] = useState('rainfall');
+  const [monthsAhead, setMonthsAhead] = useState(2);
+  const [prevYearData, setPrevYearData] = useState(MONTHS_SHORT.map(() => ''));
+  const [rainfallResult, setRainfallResult] = useState(null);
+  const [criticalResult, setCriticalResult] = useState(null);
+  const [rechargeResult, setRechargeResult] = useState(null);
   const [loading, setLoading] = useState(false);
+  // Recharge form
+  const [rArea, setRArea] = useState('500');
+  const [rPlot, setRPlot] = useState('residential');
+  const [rPrevRain, setRPrevRain] = useState('900');
 
+  const zoneName = selectedRegion?.name || 'Unknown';
+
+  // Load last year rainfall as defaults
   useEffect(() => {
     (async () => {
-      const res = await apiFetch('/api/rainfall');
-      if (res?.success) {
-        setYearsData(res.data);
+      const res = await apiFetch('/api/rainfall?year=2023');
+      if (res?.success && res.data?.[0]) {
+        setPrevYearData(res.data[0].data.map(d => String(d.rainfall_mm)));
+        setRPrevRain(String(res.data[0].total));
       }
     })();
   }, []);
 
-  const handleYearChange = (year) => {
-    setSelectedYear(year);
-    if (year === 'LPA') {
-      setRain('1077');
-    } else if (year === '') {
-      // Keep manual
-    } else {
-      const data = yearsData.find(y => y.year === year);
-      if (data) setRain(data.total.toString());
-    }
-  };
-
-  const predict = async () => {
-    if (!zone) return alert('Select a zone');
-    const [lat, lng] = zone.split(',').map(Number);
-
+  const predictRainfall = async () => {
     setLoading(true);
     try {
-      const res = await fetch('/api/predict', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ lat, lng, area_sqm: Number(area), building_type: type, rainfall_mm: Number(rain) })
+      const r = await fetch('/api/predict/rainfall', {
+        method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({ months_ahead: monthsAhead, previous_year_data: prevYearData.map(Number) })
       });
-      const data = await res.json();
-
-      if (data.success) {
-        setResult({
-          zoneName: data.nearest_zone,
-          depth: data.current_level_m,
-          graceAnomaly: data.grace_anomaly_cm,
-          status: data.groundwater_status,
-          priority: data.ai_prediction.risk_level,
-          recovery: data.ai_prediction.estimated_recovery,
-          harvest: data.ai_prediction.rainwater_harvest_potential_liters_year,
-          recs: data.ai_prediction.recommendations,
-          solutions: data.ai_prediction.solutions_ranked
-        });
-      }
-    } catch {
-      let nearest = MOCK_ZONES[0], minD = Infinity;
-      MOCK_ZONES.forEach(z => { const d = Math.hypot(z.lat - lat, z.lng - lng); if (d < minD) { minD = d; nearest = z; } });
-      const rec = AI_RECS[nearest.status];
-      const harvest = (Number(area) * Number(rain) * 0.8 / 1000).toFixed(0);
-      setResult({
-        zoneName: nearest.name, depth: nearest.groundwaterLevel, graceAnomaly: nearest.graceAnomaly,
-        status: nearest.status, priority: rec.priority, recovery: rec.estimatedRecoveryTime,
-        harvest, recs: rec,
-        solutions: [
-          { solution: 'Soak Pit Network', roi_years: 2, effectiveness: 'Medium', cost_inr: 35000 },
-          { solution: 'Rooftop RWH', roi_years: 2, effectiveness: 'Medium', cost_inr: 45000 },
-          { solution: 'Recharge Shaft', roi_years: 3, effectiveness: 'Very High', cost_inr: 180000 },
-          { solution: 'Percolation Pond', roi_years: 4, effectiveness: 'High', cost_inr: 250000 },
-          { solution: 'Check Dam', roi_years: 7, effectiveness: 'High', cost_inr: 850000 },
-        ]
-      });
-    }
+      const d = await r.json();
+      if (d.success) setRainfallResult(d);
+    } catch(e) { console.error(e); }
     setLoading(false);
   };
 
-  const col = result ? RISK_COLORS[result.priority] : null;
+  const predictCritical = async () => {
+    if (!rainfallResult) return alert('Run Rainfall Prediction first');
+    setLoading(true);
+    try {
+      const r = await fetch('/api/predict/critical-areas', {
+        method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({ predicted_rainfall_mm: rainfallResult.annual_predicted_total, zone_id: selectedRegion?.id })
+      });
+      const d = await r.json();
+      if (d.success) setCriticalResult(d);
+    } catch(e) { console.error(e); }
+    setLoading(false);
+  };
+
+  const predictRecharge = async () => {
+    setLoading(true);
+    try {
+      const r = await fetch('/api/predict/recharge-zones', {
+        method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({
+          zone_id: selectedRegion?.id,
+          previous_year_rainfall_mm: Number(rPrevRain),
+          area_sqm: Number(rArea),
+          plot_type: rPlot,
+          predicted_annual_rainfall_mm: rainfallResult?.annual_predicted_total || 950
+        })
+      });
+      const d = await r.json();
+      if (d.success) setRechargeResult(d);
+    } catch(e) { console.error(e); }
+    setLoading(false);
+  };
+
+  useEffect(() => {
+    if (onPredictionsUpdate) {
+      onPredictionsUpdate({
+        rainfall: rainfallResult,
+        critical: criticalResult,
+        recharge: rechargeResult
+      });
+    }
+  }, [rainfallResult, criticalResult, rechargeResult, onPredictionsUpdate]);
+
+  const tabs = [
+    { id:'rainfall', label:'🌧 Rainfall Predictor', icon: CloudRain },
+    { id:'critical', label:'🚨 Critical Areas', icon: AlertTriangle },
+    { id:'recharge', label:'🌿 Recharge Zones', icon: TreePine },
+    { id:'management', label:'⚡ Water Management', icon: Zap },
+  ];
 
   return (
-    <div className="grid-2 fade-in">
-      <div className="card">
-        <div className="card-header">
-          <div className="card-title"><Brain size={16} /> AI Groundwater Predictor</div>
-          <div className="card-badge">HYDRA-ML V2</div>
+    <div>
+      {/* Region banner */}
+      <div style={{ background:'rgba(99,102,241,0.06)', border:'1px solid rgba(99,102,241,0.15)', borderRadius:12, padding:'12px 20px', marginBottom:20, display:'flex', alignItems:'center', gap:10 }}>
+        <MapPin size={18} style={{ color:'#6366f1' }} />
+        <div>
+          <div style={{ fontWeight:700, fontSize:'0.95rem' }}>Region: {zoneName}</div>
+          <div style={{ fontSize:'0.75rem', color:'var(--text-secondary)' }}>Depth: {selectedRegion?.groundwaterLevel}m · GRACE: {selectedRegion?.graceAnomaly}cm · Borewells: {selectedRegion?.borewellCount}</div>
         </div>
-        <div className="card-body">
-          <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginBottom: 20, lineHeight: 1.6 }}>
-            Simulate groundwater recharge and risk levels based on 124 years of historical rainfall data.
-          </p>
-          <div className="form-grid">
-            <div className="form-group">
-              <label className="form-label">Zone / Area</label>
-              <select className="form-select" value={zone} onChange={e => setZone(e.target.value)}>
-                <option value="">Select zone...</option>
-                {MOCK_ZONES.map(z => <option key={z.id} value={`${z.lat},${z.lng}`}>{z.name}</option>)}
-              </select>
-            </div>
-            <div className="form-group">
-              <label className="form-label"><History size={12} /> Historical Reference</label>
-              <select className="form-select" value={selectedYear} onChange={e => handleYearChange(e.target.value)}>
-                <option value="">Manual Entry</option>
-                <option value="LPA">LPA (1991-2020)</option>
-                {yearsData.slice().reverse().map(y => <option key={y.year} value={y.year}>{y.year} ({y.total}mm)</option>)}
-              </select>
-            </div>
-            <div className="form-group">
-              <label className="form-label"><Ruler size={12} /> Plot Area (sqm)</label>
-              <input className="form-input" type="number" value={area} onChange={e => setArea(e.target.value)} />
-            </div>
-            <div className="form-group">
-              <label className="form-label"><CloudRain size={12} /> Annual Rainfall (mm)</label>
-              <input className="form-input" type="number" value={rain} onChange={e => setRain(e.target.value)} />
-            </div>
-            <div className="form-group">
-              <label className="form-label"><Building size={12} /> Building Type</label>
-              <select className="form-select" value={type} onChange={e => setType(e.target.value)}>
-                <option value="residential">Residential</option><option value="commercial">Commercial</option>
-                <option value="apartment">Apartment</option><option value="industrial">Industrial</option>
-              </select>
-            </div>
-            <div className="form-group full" style={{ marginTop: 10 }}>
-              <button className="btn-primary" onClick={predict} disabled={loading} style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
-                {loading ? '⏳ Analyzing...' : <><Brain size={16} /> Run AI Prediction</>}
+      </div>
+
+      {/* Tabs */}
+      <div style={{ display:'flex', gap:6, marginBottom:20, borderBottom:'1px solid rgba(255,255,255,0.08)', paddingBottom:10 }}>
+        {tabs.map(t => (
+          <button key={t.id} onClick={() => setActiveTab(t.id)} style={{
+            padding:'8px 18px', borderRadius:8, border:'none', cursor:'pointer', fontSize:'0.82rem', fontWeight:600,
+            background: activeTab===t.id ? '#6366f1' : 'transparent', color: activeTab===t.id ? '#fff' : '#94a3b8', transition:'all 0.2s'
+          }}>{t.label}</button>
+        ))}
+      </div>
+
+      {/* TAB 1: Rainfall Predictor */}
+      {activeTab === 'rainfall' && (
+        <div className="grid-2">
+          <div className="card">
+            <div className="card-header"><div className="card-title"><CloudRain size={16}/> Previous Year Monthly Data (mm)</div><div className="card-badge">MANUAL INPUT</div></div>
+            <div className="card-body">
+              <p style={{ fontSize:'0.78rem', color:'var(--text-secondary)', marginBottom:16 }}>Enter or edit monthly rainfall data from previous year. The AI model uses this to calibrate predictions.</p>
+              <div style={{ display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:8, marginBottom:16 }}>
+                {MONTHS_SHORT.map((m,i) => (
+                  <div key={m} style={{ display:'flex', flexDirection:'column', gap:4 }}>
+                    <label style={{ fontSize:'0.68rem', fontWeight:600, color:'#94a3b8' }}>{m}</label>
+                    <input type="number" value={prevYearData[i]} onChange={e => { const arr=[...prevYearData]; arr[i]=e.target.value; setPrevYearData(arr); }}
+                      style={{ padding:'6px 8px', background:'#0a0a0f', border:'1px solid #1e1e2e', borderRadius:6, color:'#f0f0f5', fontSize:'0.82rem', fontFamily:'Inter,sans-serif', width:'100%' }} />
+                  </div>
+                ))}
+              </div>
+              <div style={{ display:'flex', gap:10, alignItems:'center', marginBottom:16 }}>
+                <label style={{ fontSize:'0.78rem', fontWeight:600, color:'#94a3b8' }}>Months Ahead:</label>
+                <select value={monthsAhead} onChange={e => setMonthsAhead(Number(e.target.value))} className="form-select" style={{ width:80, padding:'4px 8px' }}>
+                  {[1,2,3,4,5,6].map(n => <option key={n} value={n}>{n}</option>)}
+                </select>
+              </div>
+              <button className="btn-primary" onClick={predictRainfall} disabled={loading} style={{ width:'100%', display:'flex', alignItems:'center', justifyContent:'center', gap:8 }}>
+                {loading ? '⏳ Predicting...' : <><Brain size={16}/> Predict Rainfall</>}
               </button>
             </div>
           </div>
-
-          {result && (
-            <div style={{ marginTop: 24 }} className="fade-in">
-              <div className="risk-banner" style={{ background: col + '15', border: `1px solid ${col}40`, borderRadius: 12, padding: 16 }}>
-                <div className="risk-icon" style={{ fontSize: '1.8rem' }}>{RISK_ICONS[result.priority]}</div>
-                <div>
-                  <div className="risk-title" style={{ color: col, fontWeight: 800, fontSize: '1.1rem' }}>{result.priority} Priority — {result.zoneName}</div>
-                  <div className="risk-sub" style={{ fontSize: '0.8rem', opacity: 0.8 }}>Depth: {result.depth}m | GRACE: {result.graceAnomaly} cm | {result.recovery}</div>
+          <div className="card">
+            <div className="card-header"><div className="card-title"><TrendingUp size={16}/> Prediction Results</div><div className="card-badge">HYDRA-ML V2</div></div>
+            <div className="card-body">
+              {!rainfallResult ? (
+                <div style={{ textAlign:'center', padding:'3rem 0', color:'var(--text-muted)', fontSize:'0.85rem' }}>
+                  <div style={{ fontSize:'2rem', marginBottom:12 }}>🤖</div>Enter previous year data and run the predictor.
                 </div>
-              </div>
-              
-              <div style={{ background: 'var(--accent-glow)', border: '1px solid rgba(99,102,241,0.2)', borderRadius: 12, padding: 16, marginTop: 16, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <div>
-                  <div style={{ fontSize: '0.65rem', fontWeight: 700, color: 'var(--accent-light)', letterSpacing: '0.08em', marginBottom: 2 }}>HARVEST POTENTIAL</div>
-                  <div style={{ fontWeight: 800, fontSize: '1.6rem', color: 'var(--accent-light)' }}>{Number(result.harvest).toLocaleString()} <span style={{ fontSize: '0.8rem', fontWeight: 500 }}>L/year</span></div>
+              ) : (
+                <div className="fade-in">
+                  <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr 1fr', gap:10, marginBottom:16 }}>
+                    <div style={{ padding:12, background:'rgba(99,102,241,0.06)', borderRadius:8, border:'1px solid rgba(99,102,241,0.15)', textAlign:'center' }}>
+                      <div style={{ fontSize:'0.65rem', color:'#94a3b8', fontWeight:600, textTransform:'uppercase' }}>Annual Total</div>
+                      <div style={{ fontSize:'1.4rem', fontWeight:800, color:'#6366f1' }}>{rainfallResult.annual_predicted_total}<span style={{ fontSize:'0.7rem' }}> mm</span></div>
+                    </div>
+                    <div style={{ padding:12, background:'rgba(16,185,129,0.06)', borderRadius:8, border:'1px solid rgba(16,185,129,0.15)', textAlign:'center' }}>
+                      <div style={{ fontSize:'0.65rem', color:'#94a3b8', fontWeight:600, textTransform:'uppercase' }}>Monsoon</div>
+                      <div style={{ fontSize:'1.4rem', fontWeight:800, color:'#10b981' }}>{rainfallResult.monsoon_predicted_total}<span style={{ fontSize:'0.7rem' }}> mm</span></div>
+                    </div>
+                    <div style={{ padding:12, background:'rgba(59,130,246,0.06)', borderRadius:8, border:'1px solid rgba(59,130,246,0.15)', textAlign:'center' }}>
+                      <div style={{ fontSize:'0.65rem', color:'#94a3b8', fontWeight:600, textTransform:'uppercase' }}>vs LPA</div>
+                      <div style={{ fontSize:'1.4rem', fontWeight:800, color:'#3b82f6' }}>{rainfallResult.lpa_comparison.percent_of_lpa}%</div>
+                      <div style={{ fontSize:'0.65rem', color:'#94a3b8' }}>{rainfallResult.lpa_comparison.trend}</div>
+                    </div>
+                  </div>
+                  <h4 style={{ fontSize:'0.8rem', color:'#94a3b8', marginBottom:8 }}>Next {monthsAhead} Month(s)</h4>
+                  <div style={{ display:'grid', gap:8, marginBottom:16 }}>
+                    {rainfallResult.upcoming_months.map((m,i) => (
+                      <div key={i} style={{ display:'flex', justifyContent:'space-between', alignItems:'center', padding:'10px 14px',
+                        background:`${RISK_COLORS[m.riskLevel]}10`, border:`1px solid ${RISK_COLORS[m.riskLevel]}25`, borderRadius:8 }}>
+                        <div><div style={{ fontWeight:700, fontSize:'0.88rem' }}>{m.month}</div><div style={{ fontSize:'0.7rem', color:'#94a3b8' }}>Hist. avg: {m.historical_avg_mm}mm</div></div>
+                        <div style={{ textAlign:'right' }}><div style={{ fontWeight:800, fontSize:'1.1rem', color:RISK_COLORS[m.riskLevel] }}>{m.predicted_rainfall_mm} mm</div>
+                        <div style={{ fontSize:'0.65rem', color:RISK_COLORS[m.riskLevel] }}>{m.riskLevel} · {(m.confidence*100).toFixed(0)}% conf</div></div>
+                      </div>
+                    ))}
+                  </div>
+                  <h4 style={{ fontSize:'0.8rem', color:'#94a3b8', marginBottom:8 }}>Full Year Forecast</h4>
+                  <ResponsiveContainer width="100%" height={200}>
+                    <BarChart data={rainfallResult.full_year}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#1e1e2e" />
+                      <XAxis dataKey="month" tick={{ fill:'#94a3b8', fontSize:9 }} axisLine={false} tickLine={false} tickFormatter={v => v.slice(0,3)} />
+                      <YAxis tick={{ fill:'#94a3b8', fontSize:10 }} axisLine={false} tickLine={false} />
+                      <Tooltip contentStyle={{ background:'#12121a', border:'1px solid #1e1e2e', borderRadius:8, color:'#f0f0f5', fontSize:12 }} />
+                      <Bar dataKey="predicted_rainfall_mm" radius={[4,4,0,0]}>
+                        {rainfallResult.full_year.map((e,i) => <Cell key={i} fill={RISK_COLORS[e.riskLevel] || '#6366f1'} />)}
+                      </Bar>
+                    </BarChart>
+                  </ResponsiveContainer>
                 </div>
-                <TrendingUp size={24} style={{ color: 'var(--accent-light)', opacity: 0.3 }} />
-              </div>
-
-              {result.recs?.immediate && <div className="recs-section" style={{ marginTop: 16 }}><div className="recs-title" style={{ color: '#f43f5e' }}>⚡ Immediate Actions</div><ul className="recs-list">{result.recs.immediate.map((r, i) => <li key={i}>{r}</li>)}</ul></div>}
-              {result.recs?.shortTerm && <div className="recs-section"><div className="recs-title" style={{ color: '#f59e0b' }}>📅 Short-Term Strategy</div><ul className="recs-list">{result.recs.shortTerm.map((r, i) => <li key={i}>{r}</li>)}</ul></div>}
+              )}
             </div>
-          )}
+          </div>
         </div>
-      </div>
+      )}
 
-      <div className="card">
-        <div className="card-header">
-          <div className="card-title">💡 Ranked Solutions</div>
-          <div className="card-badge">ROI ANALYTICS</div>
-        </div>
-        <div className="card-body">
-          {!result ? (
-            <div style={{ textAlign: 'center', padding: '4rem 0', color: 'var(--text-muted)', fontSize: '0.85rem' }}>
-              <div style={{ fontSize: '2rem', marginBottom: 12 }}>🤖</div>
-              Run the AI predictor to see<br />investment-ranked solutions.
-            </div>
+      {/* TAB 2: Critical Areas */}
+      {activeTab === 'critical' && (
+        <div>
+          {!rainfallResult ? (
+            <div className="card"><div className="card-body" style={{ textAlign:'center', padding:'3rem' }}>
+              <div style={{ fontSize:'2rem', marginBottom:12 }}>⚠️</div>
+              <p style={{ color:'var(--text-muted)' }}>Please run the <strong>Rainfall Predictor</strong> first. Critical area analysis uses predicted rainfall data.</p>
+              <button className="btn-primary" onClick={() => setActiveTab('rainfall')} style={{ marginTop:12 }}>← Go to Rainfall Predictor</button>
+            </div></div>
           ) : (
-            <div className="solutions-grid" style={{ gridTemplateColumns: '1fr', gap: 12 }}>
-              {(result.solutions || []).sort((a, b) => (a.roi_years || a.roi) - (b.roi_years || b.roi)).map((s, i) => (
-                <div className="solution-card" key={i} style={{ background: i === 0 ? 'rgba(16,185,129,0.05)' : 'rgba(255,255,255,0.02)', borderColor: i === 0 ? 'rgba(16,185,129,0.2)' : 'rgba(255,255,255,0.05)' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                    <div style={{ width: 40, height: 40, background: i === 0 ? 'rgba(16,185,129,0.1)' : 'rgba(255,255,255,0.05)', borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.2rem' }}>
-                      {s.solution.includes('Pond') ? '🏊' : s.solution.includes('RWH') ? '🏠' : s.solution.includes('Shaft') ? '🏗️' : '🛠️'}
-                    </div>
-                    <div style={{ flex: 1 }}>
-                      <div className="solution-name" style={{ fontWeight: 700, fontSize: '0.9rem' }}>{s.solution}</div>
-                      <div className="solution-meta" style={{ fontSize: '0.75rem', opacity: 0.7 }}>Cost: ₹{((s.cost_inr || s.cost) / 1000).toFixed(0)}K · ROI: {s.roi_years || s.roi}yr · {s.effectiveness}</div>
-                    </div>
-                    <div style={{ textAlign: 'right' }}>
-                      <div style={{ fontWeight: 800, color: i === 0 ? '#10b981' : 'var(--text-primary)' }}>₹{((s.cost_inr || s.cost) / 1000).toFixed(0)}K</div>
-                      {i === 0 && <div style={{ fontSize: '0.6rem', color: '#10b981', fontWeight: 700 }}>RECOM.</div>}
+            <>
+              <div style={{ marginBottom:16 }}>
+                <button className="btn-primary" onClick={predictCritical} disabled={loading} style={{ display:'flex', alignItems:'center', gap:8 }}>
+                  {loading ? '⏳ Analyzing...' : <><AlertTriangle size={16}/> Analyze Critical Areas (Predicted Rain: {rainfallResult.annual_predicted_total}mm)</>}
+                </button>
+              </div>
+              {criticalResult && (
+                <div className="fade-in">
+                  <div className="stat-grid" style={{ marginBottom:16 }}>
+                    <div className="stat-card" style={{ '--stat-accent':'#f43f5e' }}><div className="stat-label">Critical Zones</div><div className="stat-value" style={{ color:'#f43f5e' }}>{criticalResult.critical_count}</div></div>
+                    <div className="stat-card" style={{ '--stat-accent':'#f59e0b' }}><div className="stat-label">High Risk</div><div className="stat-value" style={{ color:'#f59e0b' }}>{criticalResult.high_risk_count}</div></div>
+                    <div className="stat-card" style={{ '--stat-accent':'#3b82f6' }}><div className="stat-label">Rain vs LPA</div><div className="stat-value" style={{ color:'#3b82f6' }}>{criticalResult.rainfall_vs_lpa_percent}%</div></div>
+                    <div className="stat-card" style={{ '--stat-accent':'#6366f1' }}><div className="stat-label">Outlook</div><div className="stat-value" style={{ color:'#6366f1', fontSize:'0.9rem' }}>{criticalResult.overall_outlook.split(' - ')[0]}</div></div>
+                  </div>
+                  <div className="card"><div className="card-header"><div className="card-title"><AlertTriangle size={16}/> Zone Risk Assessment</div></div>
+                    <div className="card-body">
+                      <div style={{ display:'grid', gap:10 }}>
+                        {criticalResult.zones.map((z,i) => {
+                          const col = RISK_COLORS[z.severity] || '#3b82f6';
+                          return (
+                            <div key={i} style={{ display:'flex', alignItems:'center', gap:14, padding:'12px 16px', background:`${col}08`, border:`1px solid ${col}20`, borderRadius:10 }}>
+                              <div style={{ width:40, textAlign:'center' }}><div style={{ fontWeight:800, fontSize:'1.2rem', color:col }}>{z.risk_score}</div><div style={{ fontSize:'0.55rem', color:'#94a3b8' }}>RISK</div></div>
+                              <div style={{ flex:1 }}>
+                                <div style={{ fontWeight:700, fontSize:'0.88rem' }}>{z.zone_name}</div>
+                                <div style={{ fontSize:'0.72rem', color:'#94a3b8' }}>Depth: {z.current_depth_m}m · GRACE: {z.grace_anomaly_cm}cm · Wells: {z.borewell_count}</div>
+                              </div>
+                              <div style={{ textAlign:'right' }}>
+                                <div style={{ fontSize:'0.7rem', fontWeight:700, color:col, background:`${col}15`, padding:'3px 10px', borderRadius:20, border:`1px solid ${col}30` }}>{z.severity}</div>
+                                <div style={{ fontSize:'0.65rem', color:'#94a3b8', marginTop:4 }}>{z.predicted_rainfall_impact.split(' - ')[0]}</div>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
                     </div>
                   </div>
                 </div>
-              ))}
-              <div style={{ marginTop: 8, padding: 12, background: 'rgba(99,102,241,0.05)', borderRadius: 12, display: 'flex', gap: 10, alignItems: 'flex-start' }}>
-                <div style={{ fontSize: '0.72rem', color: '#94a3b8', lineHeight: 1.5 }}>
-                  ROI (Return on Investment) is calculated based on water savings vs utility costs in Bangalore. Effectiveness is based on local geological suitability.
+              )}
+            </>
+          )}
+        </div>
+      )}
+
+      {/* TAB 3: Recharge Zones */}
+      {activeTab === 'recharge' && (
+        <div className="grid-2">
+          <div className="card">
+            <div className="card-header"><div className="card-title"><TreePine size={16}/> Recharge Zone Input</div><div className="card-badge">MANUAL ENTRY</div></div>
+            <div className="card-body">
+              <p style={{ fontSize:'0.78rem', color:'var(--text-secondary)', marginBottom:16 }}>Enter area details to predict recharge potential. AI-predicted rainfall is auto-filled if available.</p>
+              <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:12, marginBottom:16 }}>
+                <div><label style={{ fontSize:'0.72rem', fontWeight:600, color:'#94a3b8', display:'block', marginBottom:4 }}><CloudRain size={11}/> Prev Year Rain (mm)</label>
+                  <input type="number" value={rPrevRain} onChange={e => setRPrevRain(e.target.value)} className="form-input" style={{ width:'100%' }} /></div>
+                <div><label style={{ fontSize:'0.72rem', fontWeight:600, color:'#94a3b8', display:'block', marginBottom:4 }}><Brain size={11}/> AI Predicted Rain (mm)</label>
+                  <input type="number" value={rainfallResult?.annual_predicted_total || 950} readOnly className="form-input" style={{ width:'100%', opacity:0.7 }} /></div>
+                <div><label style={{ fontSize:'0.72rem', fontWeight:600, color:'#94a3b8', display:'block', marginBottom:4 }}><Ruler size={11}/> Area (sqm)</label>
+                  <input type="number" value={rArea} onChange={e => setRArea(e.target.value)} className="form-input" style={{ width:'100%' }} /></div>
+                <div><label style={{ fontSize:'0.72rem', fontWeight:600, color:'#94a3b8', display:'block', marginBottom:4 }}><Building size={11}/> Plot Type</label>
+                  <select value={rPlot} onChange={e => setRPlot(e.target.value)} className="form-select" style={{ width:'100%' }}>
+                    <option value="residential">Residential</option><option value="commercial">Commercial</option>
+                    <option value="apartment">Apartment</option><option value="industrial">Industrial</option>
+                    <option value="open_land">Open Land</option><option value="park">Park / Garden</option>
+                  </select></div>
+              </div>
+              <button className="btn-primary" onClick={predictRecharge} disabled={loading} style={{ width:'100%', display:'flex', alignItems:'center', justifyContent:'center', gap:8 }}>
+                {loading ? '⏳ Computing...' : <><TreePine size={16}/> Predict Recharge Zones</>}
+              </button>
+            </div>
+          </div>
+          <div className="card">
+            <div className="card-header"><div className="card-title"><Droplets size={16}/> Recharge Analysis</div><div className="card-badge">RESULTS</div></div>
+            <div className="card-body">
+              {!rechargeResult ? (
+                <div style={{ textAlign:'center', padding:'3rem 0', color:'var(--text-muted)', fontSize:'0.85rem' }}>
+                  <div style={{ fontSize:'2rem', marginBottom:12 }}>🌿</div>Enter details and run the recharge predictor.
+                </div>
+              ) : (
+                <div className="fade-in">
+                  <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:10, marginBottom:16 }}>
+                    <div style={{ padding:12, background:'rgba(16,185,129,0.06)', borderRadius:8, border:'1px solid rgba(16,185,129,0.15)', textAlign:'center' }}>
+                      <div style={{ fontSize:'0.65rem', color:'#94a3b8', fontWeight:600, textTransform:'uppercase' }}>Harvest Potential</div>
+                      <div style={{ fontSize:'1.3rem', fontWeight:800, color:'#10b981' }}>{(rechargeResult.harvest_potential_liters/1000).toFixed(1)}K<span style={{ fontSize:'0.7rem' }}> L/yr</span></div>
+                    </div>
+                    <div style={{ padding:12, background:'rgba(59,130,246,0.06)', borderRadius:8, border:'1px solid rgba(59,130,246,0.15)', textAlign:'center' }}>
+                      <div style={{ fontSize:'0.65rem', color:'#94a3b8', fontWeight:600, textTransform:'uppercase' }}>Recharge Potential</div>
+                      <div style={{ fontSize:'1.3rem', fontWeight:800, color:'#3b82f6' }}>{(rechargeResult.recharge_potential_liters/1000).toFixed(1)}K<span style={{ fontSize:'0.7rem' }}> L/yr</span></div>
+                    </div>
+                  </div>
+                  {rechargeResult.zone_specific && (
+                    <div style={{ padding:12, background:'rgba(99,102,241,0.06)', borderRadius:8, border:'1px solid rgba(99,102,241,0.15)', marginBottom:16 }}>
+                      <div style={{ fontSize:'0.72rem', color:'#94a3b8', marginBottom:6 }}>Zone: <strong style={{ color:'#f0f0f5' }}>{rechargeResult.input_summary.zone}</strong></div>
+                      <div style={{ fontSize:'0.72rem', color:'#94a3b8' }}>Potential improvement: <strong style={{ color:'#10b981' }}>+{rechargeResult.zone_specific.estimated_depth_improvement_m}m</strong> depth · Recharge rate: <strong style={{ color:'#6366f1' }}>{rechargeResult.zone_specific.potential_recharge_improvement} mm/day</strong></div>
+                    </div>
+                  )}
+                  <h4 style={{ fontSize:'0.8rem', color:'#94a3b8', marginBottom:8 }}>Recommended Structures</h4>
+                  <div style={{ display:'grid', gap:8 }}>
+                    {rechargeResult.recommended_structures.map((s,i) => (
+                      <div key={i} style={{ padding:12, background:'rgba(255,255,255,0.02)', border:'1px solid rgba(255,255,255,0.06)', borderRadius:8 }}>
+                        <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:4 }}>
+                          <div style={{ fontWeight:700, fontSize:'0.85rem' }}>{s.name}</div>
+                          <div style={{ fontWeight:800, color:'#10b981', fontSize:'0.85rem' }}>₹{(s.cost_inr/1000).toFixed(0)}K</div>
+                        </div>
+                        <div style={{ fontSize:'0.72rem', color:'#94a3b8', marginBottom:4 }}>{s.description}</div>
+                        <div style={{ fontSize:'0.68rem', color:'#94a3b8' }}>Capacity: {(s.capacity_liters/1000).toFixed(1)}K L · ROI: {s.roi_years}yr · {s.effectiveness}</div>
+                      </div>
+                    ))}
+                  </div>
+                  <div style={{ marginTop:12, padding:10, background:'rgba(16,185,129,0.06)', borderRadius:8, display:'flex', gap:6, flexWrap:'wrap' }}>
+                    <span style={{ fontSize:'0.7rem', color:'#94a3b8', fontWeight:600 }}>Best months:</span>
+                    {rechargeResult.optimal_months.map(m => <span key={m} style={{ fontSize:'0.68rem', background:'#10b981', color:'#fff', padding:'2px 10px', borderRadius:12, fontWeight:600 }}>{m}</span>)}
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* TAB 4: Water Management */}
+      {activeTab === 'management' && (
+        <div className="fade-in">
+          {!(rainfallResult && rechargeResult) ? (
+            <div className="card" style={{ textAlign: 'center', padding: '4rem 2rem' }}>
+              <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>🤖</div>
+              <h2 style={{ fontSize: '1.2rem', color: '#f0f0f5', marginBottom: '0.5rem' }}>AI Predictions Missing</h2>
+              <p style={{ color: '#94a3b8', maxWidth: '400px', margin: '0 auto' }}>
+                Please run the <strong>Rainfall Predictor</strong> and the <strong>Recharge Zones</strong> predictor first to generate management protocols.
+              </p>
+            </div>
+          ) : (
+            <div className="grid-2">
+              <div className="card">
+                <div className="card-header">
+                  <div className="card-title"><Info size={16} /> AI Prediction Parameters</div>
+                </div>
+                <div className="card-body">
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+                    <div style={{ padding: 16, background: 'rgba(255,255,255,0.03)', borderRadius: 8, border: '1px solid rgba(255,255,255,0.06)' }}>
+                      <CloudRain size={16} style={{ color: '#3b82f6', marginBottom: 8 }} />
+                      <div style={{ fontSize: '0.7rem', color: '#94a3b8', textTransform: 'uppercase', fontWeight: 600, marginBottom: 4 }}>Predicted Rainfall</div>
+                      <div style={{ fontSize: '1.1rem', fontWeight: 700, color: '#f0f0f5' }}>{rainfallResult.annual_predicted_total} <span style={{ fontSize: '0.8rem' }}>mm/yr</span></div>
+                    </div>
+                    <div style={{ padding: 16, background: 'rgba(255,255,255,0.03)', borderRadius: 8, border: '1px solid rgba(255,255,255,0.06)' }}>
+                      <Ruler size={16} style={{ color: '#8b5cf6', marginBottom: 8 }} />
+                      <div style={{ fontSize: '0.7rem', color: '#94a3b8', textTransform: 'uppercase', fontWeight: 600, marginBottom: 4 }}>Catchment Area</div>
+                      <div style={{ fontSize: '1.1rem', fontWeight: 700, color: '#f0f0f5' }}>{rechargeResult.input_summary.area_sqm} <span style={{ fontSize: '0.8rem' }}>sqm</span></div>
+                    </div>
+                    <div style={{ padding: 16, background: 'rgba(255,255,255,0.03)', borderRadius: 8, border: '1px solid rgba(255,255,255,0.06)' }}>
+                      <Building size={16} style={{ color: '#f59e0b', marginBottom: 8 }} />
+                      <div style={{ fontSize: '0.7rem', color: '#94a3b8', textTransform: 'uppercase', fontWeight: 600, marginBottom: 4 }}>Plot Type</div>
+                      <div style={{ fontSize: '1.1rem', fontWeight: 700, color: '#f0f0f5', textTransform: 'capitalize' }}>{rechargeResult.input_summary.plot_type}</div>
+                    </div>
+                    <div style={{ padding: 16, background: 'rgba(255,255,255,0.03)', borderRadius: 8, border: '1px solid rgba(255,255,255,0.06)' }}>
+                      <Trees size={16} style={{ color: '#10b981', marginBottom: 8 }} />
+                      <div style={{ fontSize: '0.7rem', color: '#94a3b8', textTransform: 'uppercase', fontWeight: 600, marginBottom: 4 }}>Runoff Coefficient</div>
+                      <div style={{ fontSize: '1.1rem', fontWeight: 700, color: '#f0f0f5' }}>{rechargeResult.input_summary.runoff_coefficient}</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="card">
+                <div className="card-header">
+                  <div className="card-title"><Droplets size={16} /> Conservation Targets</div>
+                  <div className="card-badge" style={{ background: '#10b98120', color: '#10b981' }}>ACTIONABLE</div>
+                </div>
+                <div className="card-body">
+                  <div style={{ textAlign: 'center', marginBottom: 24, padding: 24, background: 'linear-gradient(135deg, rgba(16,185,129,0.1) 0%, rgba(59,130,246,0.1) 100%)', borderRadius: 12, border: '1px solid rgba(16,185,129,0.2)' }}>
+                    <div style={{ fontSize: '0.85rem', color: '#94a3b8', fontWeight: 600, textTransform: 'uppercase', marginBottom: 8 }}>Target Water to Conserve</div>
+                    <div style={{ fontSize: '3rem', fontWeight: 800, color: '#10b981', lineHeight: 1 }}>
+                      {((Math.round(rechargeResult.harvest_potential_liters * 0.8)) / 1000).toFixed(1)}K <span style={{ fontSize: '1rem', color: '#64748b' }}>Liters/year</span>
+                    </div>
+                    <div style={{ fontSize: '0.85rem', color: '#3b82f6', marginTop: 8, fontWeight: 600 }}>
+                      That's ~{Math.round((rechargeResult.harvest_potential_liters * 0.8) / 365)} liters per day!
+                    </div>
+                  </div>
+
+                  <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', lineHeight: 1.6 }}>
+                    Based on the AI prediction of <strong>{rainfallResult.annual_predicted_total}mm</strong> annual rainfall over your <strong>{rechargeResult.input_summary.area_sqm} sqm</strong> {rechargeResult.input_summary.plot_type} plot, your maximum harvest potential is <strong>{(rechargeResult.harvest_potential_liters / 1000).toFixed(1)}K Liters</strong>. We recommend managing and conserving at least 80% of this runoff.
+                  </p>
+                </div>
+              </div>
+              
+              <div style={{ gridColumn: '1 / -1' }}>
+                <h2 style={{ fontSize: '1.2rem', margin: '8px 0 16px', color: '#f0f0f5' }}>Recommended Infrastructure Execution</h2>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: 16 }}>
+                  {rechargeResult.recommended_structures.map((struct, i) => (
+                    <div key={i} className="card" style={{ borderLeft: '4px solid #6366f1' }}>
+                      <div className="card-body">
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 }}>
+                          <div style={{ fontWeight: 700, fontSize: '1.1rem' }}>{struct.name}</div>
+                          <div style={{ background: '#6366f120', color: '#818cf8', padding: '4px 8px', borderRadius: 4, fontSize: '0.75rem', fontWeight: 700 }}>
+                            ₹{(struct.cost_inr / 1000).toFixed(0)}K Est.
+                          </div>
+                        </div>
+                        <p style={{ fontSize: '0.85rem', color: '#94a3b8', marginBottom: 16, minHeight: 40 }}>
+                          {struct.description}
+                        </p>
+                        
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, padding: 12, background: 'rgba(255,255,255,0.02)', borderRadius: 8 }}>
+                          <div>
+                            <div style={{ fontSize: '0.65rem', color: '#64748b', textTransform: 'uppercase', fontWeight: 600 }}>Management Capacity</div>
+                            <div style={{ fontSize: '0.9rem', fontWeight: 700, color: '#f0f0f5' }}>{(struct.capacity_liters / 1000).toFixed(1)}K L</div>
+                          </div>
+                          <div>
+                            <div style={{ fontSize: '0.65rem', color: '#64748b', textTransform: 'uppercase', fontWeight: 600 }}>ROI Timeline</div>
+                            <div style={{ fontSize: '0.9rem', fontWeight: 700, color: '#f0f0f5' }}>{struct.roi_years} Years</div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
                 </div>
               </div>
             </div>
           )}
         </div>
-      </div>
-      
+      )}
+
       <style>{`
-        .fade-in { animation: fadeIn 0.5s ease-out; }
-        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        .fade-in { animation: fadeIn 0.4s ease-out; }
+        @keyframes fadeIn { from { opacity:0; transform:translateY(8px); } to { opacity:1; transform:translateY(0); } }
       `}</style>
     </div>
   );

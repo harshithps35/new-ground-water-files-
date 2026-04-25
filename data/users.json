@@ -16,5 +16,23 @@
     "passwordHash": "55a853d83a2aaa3fb72ef77235c7bf9b89f45742395e7805bc831ab89d2f3ce78c3d9a0f6c660299178813821aa488c48ef5da8e68e5995c8a6258f72f4891b5",
     "salt": "f936c7d3dfb9adb38f7c37fdff10653c",
     "createdAt": "2026-04-21T06:39:23.398Z"
+  },
+  {
+    "id": "0aa57dfb-6400-4839-8daf-c16861809127",
+    "name": "radhika",
+    "email": "test@aquasense.com",
+    "phone": null,
+    "passwordHash": "37e1c588245c8c1548ce8deb8a6920abd72e589786dff3c13baba943f6842110a305e5b10762df7f5cd5778e13e611c32d3166dd23a949119d613ac2cbff5673",
+    "salt": "e14e7102fe1d95009646f003d15e363e",
+    "createdAt": "2026-04-25T05:03:56.642Z"
+  },
+  {
+    "id": "2f2c0f11-c5fd-498d-b028-0fe27298b986",
+    "name": "Test User",
+    "email": "test@test.com",
+    "phone": null,
+    "passwordHash": "d36f9cb77e00b0b96f88bdaf5340a96ee60ba71e2b867fe86e6d70724fdb86971de88a07dfd60a92a97ccd37b9b65b1edc60dd25c1e3781e535667947e047d0b",
+    "salt": "d3730f27b1d86612e8bb4661c691178d",
+    "createdAt": "2026-04-25T05:23:45.716Z"
   }
 ]
